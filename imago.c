@@ -187,9 +187,10 @@ static void redde_bioluminescentia(Tabula* t, const FaciesParametra* p, const Zo
  * Pipelina redditionis principalis
  * ------------------------------------------------------------------------ */
 
-void imago_redde(
+static void imago_redde_impl(
     Imago* im, uint8_t* rgba, ModusArtis modus,
-    PostEffectus fx, float vis_fx, float tempus
+    const PostEffectus* fxs, const float* vis_fxs, int n_fx,
+    float tempus
 ) {
     if (!im || !rgba)
         return;
@@ -259,12 +260,34 @@ void imago_redde(
     /* Applica stilum */
     modus_applica(t, modus, tempus);
 
-    /* Applica post-effectum */
-    effectus_applica(t, fx, vis_fx, tempus);
+    /* Applica post-effectus in sequentia */
+    for (int k = 0; k < n_fx; k++)
+        effectus_applica(t, fxs[k], vis_fxs[k], tempus);
 
     /* Conversio ad RGBA8 */
     tabula_ad_rgba8(t, rgba);
     tabula_dele(t);
+}
+
+void imago_redde(
+    Imago* im, uint8_t* rgba, ModusArtis modus,
+    PostEffectus fx, float vis_fx, float tempus
+) {
+    PostEffectus fxs[1] = { fx };
+    float        vis[1] = { vis_fx };
+    imago_redde_impl(im, rgba, modus, fxs, vis, 1, tempus);
+}
+
+void imago_redde_fx2(
+    Imago* im, uint8_t* rgba, ModusArtis modus,
+    PostEffectus fx1, float vis_fx1,
+    PostEffectus fx2, float vis_fx2,
+    float tempus
+) {
+    PostEffectus fxs[2] = { fx1, fx2 };
+    float        vis[2] = { vis_fx1, vis_fx2 };
+    int n = (fx2 == FX_NULLUS) ? 1 : 2;
+    imago_redde_impl(im, rgba, modus, fxs, vis, n, tempus);
 }
 
 int imago_crea_ppm(

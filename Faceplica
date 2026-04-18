@@ -26,12 +26,8 @@ SRC := \
   imago.c
 
 OBJ := $(SRC:.c=.o)
-BIN := portrait
-MAT := matricula
 
-.PHONY: all clean exempla
-
-all: portrait $(MAT)
+omnia: portrait $(MAT)
 
 portrait: portrait.c $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
@@ -42,7 +38,7 @@ matricula: matricula.c $(OBJ)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-clean:
+purga:
 	rm -f $(OBJ) portrait matricula portrait.o matricula.o
 	rm -rf exempla_out
 
@@ -62,3 +58,8 @@ exempla: portrait
 	./portrait -s 11 -a lemur    -g larva   -m atramentum    -o exempla_out/lemur_larva.ppm
 	./portrait -s 12 -a ianus    -g satyrus -m anime         -o exempla_out/ianus_satyrus.ppm
 	@echo "Exempla scripta in exempla_out/"
+
+linte:
+	insinulint -c *.c *.h
+
+.PHONY: omnia purga exempla linte

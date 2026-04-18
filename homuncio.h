@@ -203,6 +203,15 @@ extern "C" {
         PostEffectus fx, float vis_fx, float tempus
     );
 
+/* Sicut imago_redde, sed duo post-effectus in sequentia applicat.
+ * FX_NULLUS in fx2 reducit ad imago_redde normalem. */
+    void imago_redde_fx2(
+        Imago* im, uint8_t* rgba, ModusArtis modus,
+        PostEffectus fx1, float vis_fx1,
+        PostEffectus fx2, float vis_fx2,
+        float tempus
+    );
+
 /* Commoditas: creat, reddit, scribit PPM, deletque. Redit 0 si sucessus. */
     int imago_crea_ppm(
         uint64_t semen, Archetypum arch, Gens gens,
