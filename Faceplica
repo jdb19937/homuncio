@@ -27,7 +27,7 @@ SRC := \
 
 OBJ := $(SRC:.c=.o)
 
-omnia: portrait $(MAT)
+omnia: portrait matricula
 
 portrait: portrait.c $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
