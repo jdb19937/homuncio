@@ -147,9 +147,10 @@ int main(int argc, char** argv) {
             float vis1 = 0.0f, vis2 = 0.0f;
             float fx_roll = sors_f32(&s);
             if (fx_roll < 0.025f) {
-                /* Aberratio rara: halftone aut FS dither (exclusivus) */
+                /* Aberratio rara: halftone aut FS dither (exclusivus).
+                 * Vis capta [0.3, 0.5] ne faciem pallidam tota obliteret. */
                 fx1  = fx_rari[sors_proximus(&s) % (unsigned)n_rari];
-                vis1 = SAMPLE_VIS(&s);
+                vis1 = sors_spatium(&s, 0.3f, 0.5f);
             } else if (fx_roll < 0.150f) {
                 /* Duo fx chromatici diversi */
                 int i = (int)(sors_proximus(&s) % (unsigned)n_chrom);

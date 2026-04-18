@@ -72,7 +72,6 @@ static float sdf_galea_dome(vec2 p, void* ctx_) {
 }
 
 static void galea(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
-    (void)p;
     /* Dome */
     GaleaCtx ctx;
     ctx.c.x = z->centrum_faciei.x;
@@ -81,9 +80,38 @@ static void galea(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
     ctx.ry = z->alt_faciei * 0.72f;
     ctx.y_cut = z->frons.y_frons + z->alt_faciei * 0.04f;  /* just above eyebrows */
 
-    Color bronze      = color4(0.55f, 0.40f, 0.15f, 1.0f);
-    Color bronze_dark = color4(0.32f, 0.22f, 0.08f, 1.0f);
-    Color bronze_lux  = color4(0.80f, 0.65f, 0.30f, 1.0f);
+    /* Metallum per color_capitis_h: aes, ferrum, argentum, cuprum, nigrum */
+    Color bronze, bronze_dark, bronze_lux;
+    int metallum = (int)(p->color_capitis_h * 5.0f);
+    if (metallum > 4) metallum = 4;
+    if (metallum < 0) metallum = 0;
+    switch (metallum) {
+    case 0: /* aes (yellow-gold bronze) */
+        bronze      = color4(0.55f, 0.40f, 0.15f, 1.0f);
+        bronze_dark = color4(0.32f, 0.22f, 0.08f, 1.0f);
+        bronze_lux  = color4(0.80f, 0.65f, 0.30f, 1.0f);
+        break;
+    case 1: /* ferrum (steel gray) */
+        bronze      = color4(0.42f, 0.42f, 0.46f, 1.0f);
+        bronze_dark = color4(0.22f, 0.22f, 0.26f, 1.0f);
+        bronze_lux  = color4(0.72f, 0.72f, 0.78f, 1.0f);
+        break;
+    case 2: /* argentum (silver) */
+        bronze      = color4(0.72f, 0.74f, 0.78f, 1.0f);
+        bronze_dark = color4(0.48f, 0.50f, 0.55f, 1.0f);
+        bronze_lux  = color4(0.92f, 0.93f, 0.95f, 1.0f);
+        break;
+    case 3: /* cuprum (copper red-orange) */
+        bronze      = color4(0.62f, 0.32f, 0.20f, 1.0f);
+        bronze_dark = color4(0.38f, 0.18f, 0.10f, 1.0f);
+        bronze_lux  = color4(0.85f, 0.52f, 0.36f, 1.0f);
+        break;
+    default: /* nigrum (black iron) */
+        bronze      = color4(0.22f, 0.22f, 0.25f, 1.0f);
+        bronze_dark = color4(0.08f, 0.08f, 0.10f, 1.0f);
+        bronze_lux  = color4(0.45f, 0.45f, 0.50f, 1.0f);
+        break;
+    }
 
     float raggio = fmaxf(ctx.rx, ctx.ry) + 4.0f;
     tabula_pinge_sdf(t, ctx.c, raggio, sdf_galea_dome, &ctx, bronze);

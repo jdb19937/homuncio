@@ -201,33 +201,39 @@ static void fx_lineae_prominentes(Tabula* t, float vis) {
 static void fx_nitor(Tabula* t, float vis, float tempus) {
     int w = t->w, h = t->h;
     float pulse = 0.85f + 0.25f * sinf(PORTRAIT_TAU * tempus);
-    /* Box blur: pass 1 */
     Tabula* c = tabula_clona(t);
     if (!c)
         return;
     int r = 2;
+    /* Ponderatio quadratica: solum pixel vere clari (l > 0.78) contribuunt,
+     * ne bloom mollia omnem faciem muddat. */
+    const float thr = 0.78f;
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             float bright[3] = {0, 0, 0};
-            int cnt = 0;
+            float wsum = 0.0f;
             for (int dy = -r; dy <= r; dy++) {
                 for (int dx = -r; dx <= r; dx++) {
                     int xx = clampi(x + dx, 0, w - 1);
                     int yy = clampi(y + dy, 0, h - 1);
                     int i = (yy * w + xx) * 4;
                     float l = color_luminantia(color4(c->pixels[i], c->pixels[i+1], c->pixels[i+2], 1));
-                    if (l > 0.7f) {
-                        bright[0] += c->pixels[i];
-                        bright[1] += c->pixels[i+1];
-                        bright[2] += c->pixels[i+2];
+                    float excess = l - thr;
+                    if (excess > 0.0f) {
+                        float wp = excess * excess * 16.0f;
+                        bright[0] += c->pixels[i]   * wp;
+                        bright[1] += c->pixels[i+1] * wp;
+                        bright[2] += c->pixels[i+2] * wp;
+                        wsum += wp;
                     }
-                    cnt++;
                 }
             }
-            float inv = 1.0f / (float)cnt;
+            if (wsum < 1e-4f)
+                continue;
             int i = (y * w + x) * 4;
-            /* Screen blend */
-            float a = vis * pulse;
+            float inv = 1.0f / wsum;
+            /* Screen blend, dimidiatum ne hazy fiat */
+            float a = vis * pulse * 0.5f;
             t->pixels[i+0] = 1.0f - (1.0f - t->pixels[i+0]) * (1.0f - bright[0] * inv * a);
             t->pixels[i+1] = 1.0f - (1.0f - t->pixels[i+1]) * (1.0f - bright[1] * inv * a);
             t->pixels[i+2] = 1.0f - (1.0f - t->pixels[i+2]) * (1.0f - bright[2] * inv * a);
