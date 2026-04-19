@@ -476,10 +476,14 @@ static void fex(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
         float hw = mixf(base_hw, top_hw, u);
         /* Paulō sinus in medio — shade variatus */
         Color c = body;
-        if (u < 0.15f) c = body_dark;      /* umbra basi */
-        else if (u > 0.85f) c = body_lux;  /* lux top */
-        tabula_pinge_lineam(t, v2(z->centrum_faciei.x - hw, cy),
-                            v2(z->centrum_faciei.x + hw, cy), 2.2f, c);
+        if (u < 0.15f)
+            c = body_dark;      /* umbra basi */
+        else if (u > 0.85f)
+            c = body_lux;  /* lux top */
+        tabula_pinge_lineam(
+            t, v2(z->centrum_faciei.x - hw, cy),
+            v2(z->centrum_faciei.x + hw, cy), 2.2f, c
+        );
     }
 
     /* Margō rotundus in summo — ellipsis parva */
@@ -510,8 +514,10 @@ static void fex(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
     for (int i = 0; i < 5; i++) {
         float fx_off = (i - 2) * 1.0f;
         vec2 fa = v2(cord_b.x + fx_off, cord_b.y + 1.0f);
-        vec2 fb = v2(cord_b.x + fx_off * 1.5f,
-                     cord_b.y + z->alt_faciei * 0.10f + sors_spatium(&s, -1.0f, 2.0f));
+        vec2 fb = v2(
+            cord_b.x + fx_off * 1.5f,
+            cord_b.y + z->alt_faciei * 0.10f + sors_spatium(&s, -1.0f, 2.0f)
+        );
         tabula_pinge_lineam(t, fa, fb, 0.9f, tassel_cord);
     }
 }
