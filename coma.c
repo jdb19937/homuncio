@@ -339,55 +339,104 @@ void redde_barba(
     Sors s = sors_deriva(p->semen, 0xBA2BA1234u);
     uint32_t semen_fbm = (uint32_t)(p->semen ^ 0xB3ADu);
 
-    /* Regio barbae: sub os, circum maxillam, descendens */
+    /* Regiones anchor: ab aures (sideburns) ad mentum */
+    float ear_y    = z->oculi.y + z->alt_faciei * 0.15f;        /* ubi patillae incipiunt */
     float jaw_y    = z->centrum_faciei.y + z->alt_faciei * 0.55f;
     float chin_y   = z->mentum.centrum.y + z->mentum.r * 0.4f;
+    float cheek_y  = z->centrum_faciei.y + z->alt_faciei * 0.25f; /* supra jaw, sub mala */
     float jaw_half = z->lat_faciei * 0.95f;
+    float face_cx  = z->centrum_faciei.x;
+    float mouth_y  = z->os.centrum.y;
 
     /* Punctum: densitas altior in regione "pilosa" ex modus_barbae */
     int N;
     float density = p->densitas_barbae;
+    float y_top;   /* quota superior samplingī per modum */
     switch (p->modus_barbae) {
-    case BARBA_STIRPS:    N = 400;
-        density *= 0.5f;
+    case BARBA_STIRPS:    N = 900;
+        density *= 0.45f;
+        y_top = cheek_y;
         break;
-    case BARBA_MAXILLAE:  N = 600; break;
-    case BARBA_PLENA:     N = 900; break;
-    case BARBA_PROLIXA:   N = 1400; break;
-    case BARBA_BIFIDA:    N = 900; break;
-    default:              N = 500; break;
+    case BARBA_MAXILLAE:  N = 1100;
+        y_top = ear_y;
+        break;
+    case BARBA_PLENA:     N = 1600;
+        y_top = ear_y;
+        break;
+    case BARBA_PROLIXA:   N = 2200;
+        y_top = ear_y;
+        break;
+    case BARBA_BIFIDA:    N = 700;
+        y_top = jaw_y;
+        break;
+    default:              N = 500;
+        y_top = jaw_y;
+        break;
     }
+    float y_bot = chin_y + z->alt_faciei * 0.2f
+        + ((p->modus_barbae == BARBA_PROLIXA) ? z->alt_faciei * 0.4f : 0.0f);
 
     for (int i = 0; i < N; i++) {
-        float x = sors_spatium(&s, z->centrum_faciei.x - jaw_half, z->centrum_faciei.x + jaw_half);
-        float y = sors_spatium(&s, jaw_y, chin_y + z->alt_faciei * 0.2f + 10.0f * (p->modus_barbae == BARBA_PROLIXA));
-        /* Densitas spatialis */
-        float dx = x - z->centrum_faciei.x;
-        float dy = y - chin_y;
-        float dist = sqrtf(dx * dx + dy * dy);
+        float x = sors_spatium(&s, face_cx - jaw_half, face_cx + jaw_half);
+        float y = sors_spatium(&s, y_top, y_bot);
+        float dx = x - face_cx;
+        float dy_chin = y - chin_y;
+        /* Distantia ā līneā mandibulae (īdeālī): arcus ab aure per chin */
+        float jaw_arc_y = jaw_y + (fabsf(dx) / jaw_half) * (chin_y - jaw_y) * 0.6f;
+        float dist_jaw = fabsf(y - jaw_arc_y);
+
+        /* Excludit labia/ōs area (barba nōn crescit in labiīs) */
+        if (fabsf(dx) < z->os.lat * 0.9f && fabsf(y - mouth_y) < z->os.alt * 1.6f)
+            continue;
+
         float threshold;
         switch (p->modus_barbae) {
-        case BARBA_STIRPS:   threshold = 0.5f; break;
-        case BARBA_MAXILLAE: threshold = fabsf(dx) / jaw_half > 0.4f ? 0.75f : 0.25f; break;
-        case BARBA_PLENA:    threshold = 0.85f; break;
-        case BARBA_PROLIXA:  threshold = 0.9f; break;
-        case BARBA_BIFIDA:   threshold = fabsf(dx) < jaw_half * 0.15f ? 0.15f : 0.85f; break;
-        default:             threshold = 0.6f; break;
+        case BARBA_STIRPS:
+            /* Stubble ubique: stabilis ubique */
+            threshold = 0.55f;
+            break;
+        case BARBA_MAXILLAE:
+            /* Tantum prope mandibulam + patillae */
+            threshold = (dist_jaw < z->alt_faciei * 0.08f) ? 0.30f : 0.92f;
+            break;
+        case BARBA_PLENA: {
+            /* Dense super mandibulam, tapering in genās */
+                float cheek_up = fmaxf(0.0f, (jaw_arc_y - y) / (z->alt_faciei * 0.35f));
+                threshold = 0.35f + cheek_up * 0.55f;
+            /* Paululum densior in mentō */
+                if (dy_chin > 0.0f && fabsf(dx) < z->lat_faciei * 0.35f)
+                    threshold -= 0.15f;
+                break;
+            }
+        case BARBA_PROLIXA: {
+                float cheek_up = fmaxf(0.0f, (jaw_arc_y - y) / (z->alt_faciei * 0.40f));
+                threshold = 0.25f + cheek_up * 0.50f;
+                if (y > chin_y)
+                    threshold = 0.20f;  /* prolixa sub chinem densissima */
+                break;
+            }
+        case BARBA_BIFIDA: {
+            /* Duo lobi — vacuum in mediō mentō */
+                float gap = z->lat_faciei * 0.10f;
+                if (fabsf(dx) < gap)
+                    threshold = 0.95f;
+                else if (fabsf(dx) < z->lat_faciei * 0.40f && y > jaw_y)
+                    threshold = 0.30f;
+                else
+                    threshold = 0.88f;
+                break;
+            }
+        default: threshold = 0.6f; break;
         }
-        if (y > chin_y && p->modus_barbae == BARBA_STIRPS)
-            continue;
 
         float noise_val = fbm_s(x * 0.15f, y * 0.15f, 3, 0.5f, semen_fbm) * 0.5f + 0.5f;
         if (noise_val * density < threshold)
             continue;
-        (void)dist;
 
-        /* Pingit punctum vel filum brevi */
         Color b_c = col->comae_obscura;
         if (p->modus_barbae == BARBA_STIRPS) {
             tabula_pinge_discum(t, v2(x, y), 0.35f, b_c);
         } else {
-            /* filum brevis: 2-3 pixel descensa */
             tabula_pinge_lineam(t, v2(x, y), v2(x, y + 2.0f), 0.6f, b_c);
         }
     }

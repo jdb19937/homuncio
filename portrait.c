@@ -2,8 +2,8 @@
  *
  * Exemplum:
  *   ./portrait -o out.ppm
- *   ./portrait --semen 42 --archetypum lar --gens nympha --modus anime -o nympha.ppm
- *   ./portrait -s foo -a faunus -g furia -m cartoon -t 0.3 -f vignetta -v 0.6 \
+ *   ./portrait --semen 42 --archetypum lar --gens nympha --modus orientalis -o nympha.ppm
+ *   ./portrait -s foo -a faunus -g furia -m comicus -t 0.3 -f vignetta -v 0.6 \
  *              -e laetum -p 1.0 -o furia.ppm
  */
 
@@ -24,7 +24,7 @@ static void usus(const char* argv0) {
         "  -s, --semen <valor>      numerus vel nomen (hashed)     [default: 1]\n"
         "  -a, --archetypum <nomen> archetypum personae            [default: lar]\n"
         "  -g, --gens <nomen>       gens (species)                 [default: humana]\n"
-        "  -m, --modus <nomen>      modus artis (stilus)           [default: cartoon]\n"
+        "  -m, --modus <nomen>      modus artis (stilus)           [default: comicus]\n"
         "  -t, --tempus <float>     [0,1), animatio periodica      [default: 0.0]\n"
         "  -f, --fx <nomen>         post-effectus                  [default: nullus]\n"
         "  -v, --vis-fx <float>     vis post-effectus [0,1]        [default: 0.5]\n"
@@ -34,11 +34,12 @@ static void usus(const char* argv0) {
         "\n"
         "Valores possibiles:\n"
         "  archetypum:  lar manes lemur ianus augur quirinus carna genius flamen faunus\n"
-        "  gens:        humana nympha nanus gigas penates larva furia satyrus\n"
-        "  modus:       cartoon pixel atramentum pictum ludicrum_viii anime niger\n"
+        "  gens:        humana nympha pygmaeus gigas penates larva furia satyrus\n"
+        "  modus:       comicus tessellatus atramentum pictum ludicrum_viii orientalis niger\n"
         "  fx:          nullus vignetta granum scanlineae_crt aber_chromatis\n"
         "               dithering_bayer dithering_fs halftone posterizatio\n"
-        "               lineae_prominentes nitor\n"
+        "               lineae_prominentes nitor patina fresco aurum mosaicum\n"
+        "               solarizatio rimae\n"
         "  expressio:   neutrum laetum triste iratum mirans timidum fastidiosum contemptum\n"
         "\n"
         "Semen: integer (e.g. 42) vel nomen arbitrarium (e.g. 'marcus') — hashed deterministice.\n",
@@ -103,7 +104,7 @@ int main(int argc, char** argv) {
     uint64_t    semen        = 1;
     int         arch         = ARCH_LAR;
     int         gens         = GENS_HUMANA;
-    int         modus        = MODUS_CARTOON;
+    int         modus        = MODUS_COMICUS;
     float       tempus       = 0.0f;
     PostEffectus fx          = FX_NULLUS;
     float       vis_fx       = 0.5f;

@@ -64,8 +64,8 @@ static void redde_sfondo(Tabula* t, const FaciesParametra* p) {
     int w = t->w, h = t->h;
     Sors s = sors_deriva(p->semen, 0xBACBACu);
 
-    /* Duo stili: ~60% subtilis frigidus, ~40% audax primarius vivido saturatione */
-    int audax = sors_f32(&s) < 0.40f;
+    /* ~72% audax (primariī vīvidī), ~28% subtīlis (palettae Rōmānae terreae) */
+    int audax = sors_f32(&s) < 0.72f;
     float hue, sat_t, sat_b, lum_t, lum_b;
 
     if (audax) {
@@ -85,34 +85,100 @@ static void redde_sfondo(Tabula* t, const FaciesParametra* p) {
             hue = sors_spatium(&s, 0.60f, 0.68f);  /* caeruleus saturatus */
         else
             hue = sors_spatium(&s, 0.83f, 0.95f);  /* purpureus-roseus */
-        sat_t = sors_spatium(&s, 0.65f, 0.88f);
-        sat_b = sors_spatium(&s, 0.70f, 0.90f);
-        lum_t = sors_spatium(&s, 0.35f, 0.55f);
-        lum_b = sors_spatium(&s, 0.20f, 0.38f);
+        sat_t = sors_spatium(&s, 0.75f, 0.95f);
+        sat_b = sors_spatium(&s, 0.78f, 0.95f);
+        /* Lum bimodalis: 70% obscurus-medius, 30% pastellus clarior */
+        if (sors_f32(&s) < 0.30f) {
+            lum_t = sors_spatium(&s, 0.70f, 0.85f);
+            lum_b = sors_spatium(&s, 0.55f, 0.72f);
+            sat_t *= 0.7f;
+            sat_b *= 0.7f;
+        } else {
+            lum_t = sors_spatium(&s, 0.42f, 0.62f);
+            lum_b = sors_spatium(&s, 0.25f, 0.45f);
+        }
     } else {
-        /* Subtilis: hua frigida cum saturatione humili */
-        hue = sors_f32(&s) < 0.5f
-            ? sors_spatium(&s, 0.55f, 0.70f)
-            : sors_spatium(&s, 0.72f, 0.82f);
-        sat_t = sors_spatium(&s, 0.12f, 0.25f);
-        sat_b = sors_spatium(&s, 0.10f, 0.22f);
-        lum_t = sors_spatium(&s, 0.18f, 0.30f);
-        lum_b = sors_spatium(&s, 0.08f, 0.15f);
+        /* Subtilis: palettae Romanae — terrea, muraria, sepia, pallida */
+        float roll = sors_f32(&s);
+        int lightus = 0;   /* 1 = fundus clarior (parietum murariorum) */
+        if      (roll < 0.14f) {
+            hue = sors_spatium(&s, 0.02f, 0.08f);   /* terracotta/sinopis */
+            lightus = sors_f32(&s) < 0.5f;
+        } else if (roll < 0.26f) {
+            hue = sors_spatium(&s, 0.08f, 0.13f);   /* ochra/sepia */
+            lightus = sors_f32(&s) < 0.7f;          /* saepe clarior — pergamena */
+        } else if (roll < 0.38f) {
+            hue = sors_spatium(&s, 0.25f, 0.35f);   /* viridis muscosus/verdigris */
+        } else if (roll < 0.50f) {
+            hue = sors_spatium(&s, 0.42f, 0.52f);   /* viridis-cyaneus mare */
+        } else if (roll < 0.62f) {
+            hue = sors_spatium(&s, 0.55f, 0.68f);   /* caeruleus — retentus sed minor */
+        } else if (roll < 0.72f) {
+            hue = sors_spatium(&s, 0.72f, 0.82f);   /* purpureus — retentus sed minor */
+        } else if (roll < 0.85f) {
+            hue = sors_spatium(&s, 0.96f, 1.04f);   /* roseus pallidus wrap */
+            if (hue > 1.0f)
+                hue -= 1.0f;
+            lightus = sors_f32(&s) < 0.6f;
+        } else {
+            /* neuter griseus/canus */
+            hue = sors_spatium(&s, 0.08f, 0.14f);
+            lightus = sors_f32(&s) < 0.5f;
+        }
+        sat_t = sors_spatium(&s, 0.10f, 0.28f);
+        sat_b = sors_spatium(&s, 0.08f, 0.25f);
+        if (lightus) {
+            lum_t = sors_spatium(&s, 0.72f, 0.88f);
+            lum_b = sors_spatium(&s, 0.60f, 0.78f);
+            sat_t *= 0.6f;
+            sat_b *= 0.6f;
+        } else {
+            lum_t = sors_spatium(&s, 0.20f, 0.38f);
+            lum_b = sors_spatium(&s, 0.10f, 0.22f);
+        }
     }
 
     HSL h1 = { hue, sat_t, lum_t };
     HSL h2 = { hue, sat_b, lum_b };
     Color top = hsl_ad_color(h1, 1.0f);
     Color bot = hsl_ad_color(h2, 1.0f);
+    /* Directio gradientis: 70% verticalis, 15% horizontalis, 15% radialis */
+    float gd_roll = sors_f32(&s);
+    int gdir = (gd_roll < 0.70f) ? 0 : (gd_roll < 0.85f) ? 1 : 2;
+    float cx = w * 0.5f, cy = h * 0.5f;
+    float maxd = sqrtf(cx*cx + cy*cy);
     for (int y = 0; y < h; y++) {
-        float u = (float)y / (float)(h - 1);
-        Color c = color_misce(top, bot, u);
         for (int x = 0; x < w; x++) {
+            float u;
+            if (gdir == 0)
+                u = (float)y / (float)(h - 1);
+            else if (gdir == 1)
+                u = (float)x / (float)(w - 1);
+            else {
+                float dx = (float)x - cx, dy = (float)y - cy;
+                u = sqrtf(dx*dx + dy*dy) / maxd;
+            }
+            Color c = color_misce(top, bot, u);
             int i = (y * w + x) * 4;
             t->pixels[i+0] = c.r;
             t->pixels[i+1] = c.g;
             t->pixels[i+2] = c.b;
             t->pixels[i+3] = 1.0f;
+        }
+    }
+    /* Textura optionalis (35%): stucco/lapis — FBM noise in luminantia */
+    if (sors_f32(&s) < 0.35f) {
+        uint32_t tex_semen = (uint32_t)(p->semen ^ 0xD1C71A1Cu);
+        float amp = sors_spatium(&s, 0.06f, 0.18f);
+        float freq = sors_spatium(&s, 0.05f, 0.14f);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                float n = fbm_s((float)x * freq, (float)y * freq, 4, 0.5f, tex_semen);
+                int i = (y * w + x) * 4;
+                t->pixels[i+0] = clampf(t->pixels[i+0] + n * amp, 0.0f, 1.0f);
+                t->pixels[i+1] = clampf(t->pixels[i+1] + n * amp, 0.0f, 1.0f);
+                t->pixels[i+2] = clampf(t->pixels[i+2] + n * amp, 0.0f, 1.0f);
+            }
         }
     }
 }
@@ -187,6 +253,57 @@ static void redde_bioluminescentia(Tabula* t, const FaciesParametra* p, const Zo
  * Pipelina redditionis principalis
  * ------------------------------------------------------------------------ */
 
+/* Pingit figuram (omnia praeter fundum) in tabula */
+static void redde_figuram(
+    Tabula* t, const FaciesParametra* par, const ZonaeFaciei* z,
+    const PalettaFaciei* col
+) {
+    redde_aures(t, par, z, col);
+    redde_cervix(t, par, z, col);
+    redde_cutis_base(t, par, z, col);
+    redde_cutis_textura(t, par, z, col);
+    redde_rugas(t, par, z, col);
+    redde_lentigines(t, par, z, col);
+    redde_cicatrices(t, par, z, col);
+    redde_nasum(t, par, z, col);
+    redde_os(t, par, z, col);
+    redde_dentes(t, par, z, col);
+    redde_supercilia(t, par, z, col);
+    redde_oculos(t, par, z, col);
+    redde_cornua(t, par, z, col);
+    redde_barba(t, par, z, col);
+    redde_mustacia(t, par, z, col);
+    redde_vestis(t, par, z, col);
+    redde_coma_massa(t, par, z, col);
+    redde_coma_fila(t, par, z, col);
+    redde_ornamenta_capitis(t, par, z, col);
+    redde_bioluminescentia(t, par, z);
+}
+
+/* Compositio "over": fg super bg, usando alpha of fg */
+static void composite_over(Tabula* bg, const Tabula* fg) {
+    int n = bg->w * bg->h;
+    for (int i = 0; i < n; i++) {
+        float a = fg->pixels[i*4+3];
+        float ia = 1.0f - a;
+        bg->pixels[i*4+0] = fg->pixels[i*4+0] * a + bg->pixels[i*4+0] * ia;
+        bg->pixels[i*4+1] = fg->pixels[i*4+1] * a + bg->pixels[i*4+1] * ia;
+        bg->pixels[i*4+2] = fg->pixels[i*4+2] * a + bg->pixels[i*4+2] * ia;
+        bg->pixels[i*4+3] = 1.0f;
+    }
+}
+
+static FaciesParametra par_preparatus(Imago* im, float tempus) {
+    FaciesParametra par = im->par;
+    par.tempus = tempus;
+    if (im->expressio_pondus > 0.001f)
+        facies_applica_expressionem(&par, &im->expressio_active, im->expressio_pondus);
+    /* Tremor lucis: color cutis oscillat leviter */
+    float tremor = cosf(PORTRAIT_TAU * tempus) * 0.015f;
+    par.calor_cutis = clampf(par.calor_cutis + tremor, 0.0f, 1.0f);
+    return par;
+}
+
 static void imago_redde_impl(
     Imago* im, uint8_t* rgba, ModusArtis modus,
     const PostEffectus* fxs, const float* vis_fxs, int n_fx,
@@ -194,20 +311,8 @@ static void imago_redde_impl(
 ) {
     if (!im || !rgba)
         return;
+    FaciesParametra par = par_preparatus(im, tempus);
 
-    /* Applicamus expressionem (non destructive — copia paramum) */
-    FaciesParametra par = im->par;
-    par.tempus = tempus;
-
-    if (im->expressio_pondus > 0.001f) {
-        facies_applica_expressionem(&par, &im->expressio_active, im->expressio_pondus);
-    }
-
-    /* Tremor lucis: color cutis oscillat leviter */
-    float tremor = cosf(PORTRAIT_TAU * tempus) * 0.015f;
-    par.calor_cutis = clampf(par.calor_cutis + tremor, 0.0f, 1.0f);
-
-    /* Redditio */
     Tabula* t = tabula_nova(PORTRAIT_LATITUDO, PORTRAIT_ALTITUDO);
     if (!t)
         return;
@@ -215,58 +320,59 @@ static void imago_redde_impl(
     ZonaeFaciei z = zonae_computa(&par, t->w, t->h);
     PalettaFaciei col = paletta_computa(&par);
 
-    /* Ordo:
-     *   1. sfondo
-     *   2. aures (utrum posterior ad faciem)
-     *   3. cervix
-     *   4. cutis basis
-     *   5. texturae cutis (pori, subtilis)
-     *   6. rugae
-     *   7. lentigines
-     *   8. cicatrices
-     *   9. nasus
-     *   10. os
-     *   11. dentes
-     *   12. supercilia
-     *   13. oculi
-     *   14. cornua
-     *   15. barba, mustacia
-     *   16. massa comae
-     *   17. fila comae
-     *   18. bioluminescentia (glow)
-     */
     redde_sfondo(t, &par);
-    redde_aures(t, &par, &z, &col);
-    redde_cervix(t, &par, &z, &col);
-    redde_cutis_base(t, &par, &z, &col);
-    redde_cutis_textura(t, &par, &z, &col);
-    redde_rugas(t, &par, &z, &col);
-    redde_lentigines(t, &par, &z, &col);
-    redde_cicatrices(t, &par, &z, &col);
-    redde_nasum(t, &par, &z, &col);
-    redde_os(t, &par, &z, &col);
-    redde_dentes(t, &par, &z, &col);
-    redde_supercilia(t, &par, &z, &col);
-    redde_oculos(t, &par, &z, &col);
-    redde_cornua(t, &par, &z, &col);
-    redde_barba(t, &par, &z, &col);
-    redde_mustacia(t, &par, &z, &col);
-    redde_vestis(t, &par, &z, &col);
-    redde_coma_massa(t, &par, &z, &col);
-    redde_coma_fila(t, &par, &z, &col);
-    redde_ornamenta_capitis(t, &par, &z, &col);
-    redde_bioluminescentia(t, &par, &z);
-
-    /* Applica stilum */
+    redde_figuram(t, &par, &z, &col);
     modus_applica(t, modus, tempus);
 
-    /* Applica post-effectus in sequentia */
     for (int k = 0; k < n_fx; k++)
         effectus_applica(t, fxs[k], vis_fxs[k], tempus);
 
-    /* Conversio ad RGBA8 */
     tabula_ad_rgba8(t, rgba);
     tabula_dele(t);
+}
+
+void imago_redde_bgfg(
+    Imago* im, uint8_t* rgba, ModusArtis modus,
+    PostEffectus fx_bg, float vis_bg,
+    PostEffectus fx_fg, float vis_fg,
+    float tempus
+) {
+    if (!im || !rgba)
+        return;
+    FaciesParametra par = par_preparatus(im, tempus);
+
+    Tabula* bg = tabula_nova(PORTRAIT_LATITUDO, PORTRAIT_ALTITUDO);
+    Tabula* fg = tabula_nova(PORTRAIT_LATITUDO, PORTRAIT_ALTITUDO);
+    if (!bg || !fg) {
+        if (bg)
+            tabula_dele(bg);
+        if (fg)
+            tabula_dele(fg);
+        return;
+    }
+
+    ZonaeFaciei z = zonae_computa(&par, bg->w, bg->h);
+    PalettaFaciei col = paletta_computa(&par);
+
+    /* Fundus solus */
+    redde_sfondo(bg, &par);
+
+    /* Figura in tabula transparente (calloc → alpha=0 initialiter) */
+    redde_figuram(fg, &par, &z, &col);
+    modus_applica(fg, modus, tempus);
+
+    /* Fx independenter */
+    if (fx_bg != FX_NULLUS)
+        effectus_applica(bg, fx_bg, vis_bg, tempus);
+    if (fx_fg != FX_NULLUS)
+        effectus_applica(fg, fx_fg, vis_fg, tempus);
+
+    /* Compositio */
+    composite_over(bg, fg);
+    tabula_ad_rgba8(bg, rgba);
+
+    tabula_dele(bg);
+    tabula_dele(fg);
 }
 
 void imago_redde(
@@ -425,7 +531,7 @@ int portrait_archetypum_ex_nomine(const char* nomen) {
 
 int portrait_gens_ex_nomine(const char* nomen) {
     static const char* const tab[] = {
-        "humana", "nympha", "nanus", "gigas",
+        "humana", "nympha", "pygmaeus", "gigas",
         "penates", "larva", "furia", "satyrus"
     };
     return find_name(nomen, tab, 8);
@@ -433,8 +539,8 @@ int portrait_gens_ex_nomine(const char* nomen) {
 
 int portrait_modus_ex_nomine(const char* nomen) {
     static const char* const tab[] = {
-        "cartoon", "pixel", "atramentum", "pictum",
-        "ludicrum_viii", "anime", "niger"
+        "comicus", "tessellatus", "atramentum", "pictum",
+        "ludicrum_viii", "orientalis", "niger"
     };
     return find_name(nomen, tab, 7);
 }
@@ -443,7 +549,8 @@ int portrait_effectus_ex_nomine(const char* nomen) {
     static const char* const tab[] = {
         "nullus", "vignetta", "granum", "scanlineae_crt",
         "aber_chromatis", "dithering_bayer", "dithering_fs",
-        "halftone", "posterizatio", "lineae_prominentes", "nitor"
+        "halftone", "posterizatio", "lineae_prominentes", "nitor",
+        "patina", "fresco", "aurum", "mosaicum", "solarizatio", "rimae"
     };
-    return find_name(nomen, tab, 11);
+    return find_name(nomen, tab, 17);
 }

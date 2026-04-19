@@ -110,70 +110,127 @@ int main(int argc, char** argv) {
         for (int c = 0; c < dim; c++) {
             /* Eligit parametra fortuita */
             uint64_t subsemen = sors_proximus(&s);
-            Archetypum arch   = (Archetypum)(sors_proximus(&s) % ARCH_NUMERUS);
-            Gens gens         = (Gens)      (sors_proximus(&s) % GENS_NUMERUS);
+            /* Archetypum ponderatus: favet vīsuāliter distinctōs (senex, puer, silvester)
+             * super medianōs (LAR/IANUS/FLAMEN/AUGUR qui biased similiter) */
+            float pond_arch[ARCH_NUMERUS];
+            pond_arch[ARCH_LAR]      = 0.08f;
+            pond_arch[ARCH_MANES]    = 0.14f;   /* senex distinctus */
+            pond_arch[ARCH_LEMUR]    = 0.12f;   /* luridus distinctus */
+            pond_arch[ARCH_IANUS]    = 0.07f;
+            pond_arch[ARCH_AUGUR]    = 0.09f;
+            pond_arch[ARCH_QUIRINUS] = 0.12f;   /* cicatricatus distinctus */
+            pond_arch[ARCH_CARNA]    = 0.10f;
+            pond_arch[ARCH_GENIUS]   = 0.13f;   /* puer distinctus */
+            pond_arch[ARCH_FLAMEN]   = 0.07f;
+            pond_arch[ARCH_FAUNUS]   = 0.08f;
+            Archetypum arch = (Archetypum) sors_ponderatus(&s, pond_arch, ARCH_NUMERUS);
+            /* Gens: favet phantasticas ut varietas visibilis sit; humani 25%, alii 75% */
+            float pond_gens[GENS_NUMERUS];
+            pond_gens[GENS_HUMANA]     = 0.25f;
+            pond_gens[GENS_NYMPHARUM]  = 0.10f;
+            pond_gens[GENS_PYGMAEORUM] = 0.10f;
+            pond_gens[GENS_GIGANTUM]   = 0.10f;
+            pond_gens[GENS_PENATIUM]   = 0.10f;
+            pond_gens[GENS_LARVARUM]   = 0.10f;
+            pond_gens[GENS_FURIARUM]   = 0.12f;
+            pond_gens[GENS_SATYRORUM]  = 0.13f;
+            Gens gens = (Gens) sors_ponderatus(&s, pond_gens, GENS_NUMERUS);
 
             /* Modus artis ponderatus — monochrome rarissime (ATRAMENTUM, NIGER) */
             float pond_modi[MODUS_NUMERUS];
-            pond_modi[MODUS_CARTOON]       = 0.32f;
-            pond_modi[MODUS_PIXEL]         = 0.13f;
+            pond_modi[MODUS_COMICUS]       = 0.32f;
+            pond_modi[MODUS_TESSELLATUS]   = 0.13f;
             pond_modi[MODUS_ATRAMENTUM]    = 0.02f;   /* rarissimus */
             pond_modi[MODUS_PICTUM]        = 0.20f;
             pond_modi[MODUS_LUDICRUM_VIII] = 0.11f;
-            pond_modi[MODUS_ANIME]         = 0.20f;
+            pond_modi[MODUS_ORIENTALIS]    = 0.20f;
             pond_modi[MODUS_NIGER]         = 0.02f;   /* rarissimus */
             ModusArtis modus = (ModusArtis) sors_ponderatus(&s, pond_modi, MODUS_NUMERUS);
 
-            /* Fx chromatici (excludit halftone + FS dither qui monochromum producunt) */
-            static const PostEffectus fx_chromatici[] = {
+            /* Fx pro figura (fg): conservative — non obliteret vultum */
+            static const PostEffectus fx_fg_set[] = {
                 FX_VIGNETTA, FX_GRANUM, FX_SCANLINEAE_CRT,
                 FX_ABER_CHROMATIS, FX_DITHERING_BAYER,
-                FX_POSTERIZATIO, FX_LINEAE_PROMINENTES, FX_NITOR
+                FX_POSTERIZATIO, FX_LINEAE_PROMINENTES, FX_NITOR,
+                FX_PATINA, FX_FRESCO, FX_AURUM, FX_RIMAE
             };
-            int n_chrom = (int)(sizeof(fx_chromatici) / sizeof(fx_chromatici[0]));
-            /* Fx rari — monochromatici, solum ut aberratio singularis */
-            static const PostEffectus fx_rari[] = {
-                FX_HALFTONE, FX_DITHERING_FS
+            int n_fg = (int)(sizeof(fx_fg_set) / sizeof(fx_fg_set[0]));
+
+            /* Fx bg audax — ponderatus ut dramatici saepius eligantur super subtiles.
+             * Pondus altior → saepius eligitur. */
+            static const PostEffectus fx_bg_audax[]   = {
+                FX_HALFTONE, FX_MOSAICUM, FX_DITHERING_FS, FX_SOLARIZATIO,
+                FX_AURUM, FX_DITHERING_BAYER, FX_POSTERIZATIO
             };
-            int n_rari = (int)(sizeof(fx_rari) / sizeof(fx_rari[0]));
+            int n_bg_audax = (int)(sizeof(fx_bg_audax) / sizeof(fx_bg_audax[0]));
+            static const PostEffectus fx_bg_moderatus[] = {
+                FX_SCANLINEAE_CRT, FX_FRESCO, FX_PATINA, FX_RIMAE,
+                FX_LINEAE_PROMINENTES, FX_NITOR, FX_ABER_CHROMATIS, FX_GRANUM
+            };
+            int n_bg_mod = (int)(sizeof(fx_bg_moderatus) / sizeof(fx_bg_moderatus[0]));
 
-            /* Vis fx bimodalis: 75% moderata [0.25, 0.6], 25% fortis [0.6, 0.9] */
-            #define SAMPLE_VIS(SS) (sors_f32(SS) < 0.25f \
-                ? sors_spatium(SS, 0.6f, 0.9f)          \
-                : sors_spatium(SS, 0.25f, 0.6f))
+            /* Vis: trimodalis — subtilis/moderatus/maximus — ut spread late vistus sit */
+            float vfg_r = sors_f32(&s);
+            float vbg_r = sors_f32(&s);
+            (void)0;
+            #define SAMPLE_VIS_FG(SS)                               \
+                ((vfg_r = sors_f32(SS)) < 0.30f                     \
+                    ? sors_spatium(SS, 0.15f, 0.35f)                \
+                    : vfg_r < 0.70f                                 \
+                        ? sors_spatium(SS, 0.40f, 0.65f)            \
+                        : sors_spatium(SS, 0.70f, 1.0f))
+            #define SAMPLE_VIS_BG(SS)                               \
+                ((vbg_r = sors_f32(SS)) < 0.25f                     \
+                    ? sors_spatium(SS, 0.20f, 0.45f)                \
+                    : vbg_r < 0.55f                                 \
+                        ? sors_spatium(SS, 0.50f, 0.75f)            \
+                        : sors_spatium(SS, 0.80f, 1.0f))
 
-            /* Distributio fx: 45% nullus, 40% unum, 12.5% duo, 2.5% aberratio rara */
-            PostEffectus fx1 = FX_NULLUS, fx2 = FX_NULLUS;
-            float vis1 = 0.0f, vis2 = 0.0f;
-            float fx_roll = sors_f32(&s);
-            if (fx_roll < 0.025f) {
-                /* Aberratio rara: halftone aut FS dither (exclusivus).
-                 * Vis capta [0.3, 0.5] ne faciem pallidam tota obliteret. */
-                fx1  = fx_rari[sors_proximus(&s) % (unsigned)n_rari];
-                vis1 = sors_spatium(&s, 0.3f, 0.5f);
-            } else if (fx_roll < 0.150f) {
-                /* Duo fx chromatici diversi */
-                int i = (int)(sors_proximus(&s) % (unsigned)n_chrom);
-                int j;
-                do {
-                    j = (int)(sors_proximus(&s) % (unsigned)n_chrom);
-                }while (j == i);
-                fx1  = fx_chromatici[i];
-                fx2  = fx_chromatici[j];
-                vis1 = SAMPLE_VIS(&s);
-                vis2 = SAMPLE_VIS(&s);
-            } else if (fx_roll < 0.550f) {
-                /* Unum fx chromaticum */
-                fx1  = fx_chromatici[sors_proximus(&s) % (unsigned)n_chrom];
-                vis1 = SAMPLE_VIS(&s);
+            PostEffectus fx_fg = FX_NULLUS, fx_bg = FX_NULLUS;
+            float vis_fg = 0.0f, vis_bg = 0.0f;
+
+            /* Scenaria: distributio mixta ut layering et unified looks servētur */
+            float scen = sors_f32(&s);
+            if (scen < 0.10f) {
+                /* 10% nihil — mundus */
+            } else if (scen < 0.45f) {
+                /* 35% idem fx ambobus — classicus unified look */
+                PostEffectus f = fx_fg_set[sors_proximus(&s) % (unsigned)n_fg];
+                fx_fg = f;
+                fx_bg = f;
+                vis_fg = SAMPLE_VIS_FG(&s);
+                vis_bg = saturatef(vis_fg + sors_spatium(&s, 0.0f, 0.25f));
+            } else if (scen < 0.70f) {
+                /* 25% diversi fx — different bg/fg per novum capability */
+                fx_fg  = fx_fg_set[sors_proximus(&s) % (unsigned)n_fg];
+                vis_fg = SAMPLE_VIS_FG(&s);
+                int audax = sors_f32(&s) < 0.6f;
+                fx_bg = audax
+                    ? fx_bg_audax[sors_proximus(&s) % (unsigned)n_bg_audax]
+                    : fx_bg_moderatus[sors_proximus(&s) % (unsigned)n_bg_mod];
+                vis_bg = SAMPLE_VIS_BG(&s);
+            } else if (scen < 0.88f) {
+                /* 18% bg audax solus — vultus mundus, fundus dramaticus */
+                fx_bg  = fx_bg_audax[sors_proximus(&s) % (unsigned)n_bg_audax];
+                vis_bg = SAMPLE_VIS_BG(&s);
+            } else {
+                /* 12% fg solus */
+                fx_fg  = fx_fg_set[sors_proximus(&s) % (unsigned)n_fg];
+                vis_fg = SAMPLE_VIS_FG(&s);
             }
-            #undef SAMPLE_VIS
+            #undef SAMPLE_VIS_FG
+            #undef SAMPLE_VIS_BG
 
-            /* Expressio: ~80% habet aliquam expressionem non-neutralem, fortior */
-            int with_expr     = sors_f32(&s) < 0.80f;
-            int expr_idx      = sors_proximus(&s) % 8;
-            Expressio expr    = expr_tab[expr_idx];
-            float pondus      = with_expr ? sors_spatium(&s, 0.6f, 1.0f) : 0.0f;
+            /* Expressio: ~90% habet expressionem, ponderata favet extrema visibiliter */
+            int with_expr = sors_f32(&s) < 0.90f;
+            /* Pondera idx: 0=NEUTRUM 1=LAETUM 2=TRISTE 3=IRATUM 4=MIRANS 5=TIMIDUM 6=FASTIDIOSUM 7=CONTEMPTUM
+             * Favent expressiōnes quae legibilēs sunt in tesserīs parvīs */
+            float pond_expr[8] = {
+                0.04f, 0.26f, 0.16f, 0.22f, 0.20f, 0.05f, 0.04f, 0.03f
+            };
+            int expr_idx = sors_ponderatus(&s, pond_expr, 8);
+            Expressio expr = expr_tab[expr_idx];
+            float pondus = with_expr ? sors_spatium(&s, 0.80f, 1.0f) : 0.0f;
 
             Imago* im = imago_nova(subsemen, arch, gens);
             if (!im)
@@ -242,7 +299,7 @@ int main(int argc, char** argv) {
                 }
             }
 
-            imago_redde_fx2(im, cbuf, modus, fx1, vis1, fx2, vis2, tempus);
+            imago_redde_bgfg(im, cbuf, modus, fx_bg, vis_bg, fx_fg, vis_fg, tempus);
             imago_dele(im);
 
             /* Copia in positionem matricis */

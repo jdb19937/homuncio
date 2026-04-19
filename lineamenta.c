@@ -27,10 +27,47 @@ PalettaFaciei paletta_computa(const FaciesParametra* p) {
         h.s = mixf(h.s, 0.7f, 0.5f);
         h.l = mixf(h.l, 0.35f, 0.3f);
         c.cutis = hsl_ad_color(h, 1.0f);
+    } else if (
+        p->gens == GENS_NYMPHARUM
+        && (p->semen & 0xFu) < 5u
+    ) {
+        /* Nymphae occasionales caeruleae/aquaticae (~31%) */
+        HSL h = color_ad_hsl(c.cutis);
+        h.h = mixf(0.52f, 0.58f, (float)((p->semen >> 4) & 0xFu) / 15.0f);
+        h.s = mixf(h.s, 0.45f, 0.6f);
+        h.l = mixf(h.l, 0.65f, 0.3f);
+        c.cutis = hsl_ad_color(h, 1.0f);
+    } else if (
+        p->gens == GENS_HUMANA
+        && (p->semen & 0x3Fu) < 2u
+    ) {
+        /* Rara tinctus caeruleus etiam inter humanos (~3%) */
+        HSL h = color_ad_hsl(c.cutis);
+        h.h = 0.57f;
+        h.s = mixf(h.s, 0.30f, 0.4f);
+        h.l = mixf(h.l, 0.55f, 0.15f);
+        c.cutis = hsl_ad_color(h, 1.0f);
     }
     c.cutis_umbra  = color_obscurior(c.cutis, 0.35f);
     c.cutis_lux    = color_clariorem(c.cutis, 0.20f);
-    c.iridis       = color_iridis_base(p->color_iridis_h, p->color_iridis_s, 0.45f);
+    /* Luminositas iridis: exotici (hūa extra regionem calidam) clariores ut pop
+     * in tesserīs parvīs; naturales servant profunditatem mediam. */
+    {
+        /* Distantia hūae a regione calida (brunneus ~0.08) */
+        float dh = p->color_iridis_h - 0.08f;
+        if (dh < 0.0f)
+            dh = -dh;
+        if (dh > 0.5f)
+            dh = 1.0f - dh;
+        float iris_l;
+        if (p->color_iridis_s < 0.12f)
+            iris_l = 0.72f;  /* cani/albi clarissimi */
+        else if (dh > 0.18f)
+            iris_l = 0.52f;  /* exotici clariores */
+        else
+            iris_l = 0.45f - 0.12f * p->color_iridis_s;
+        c.iridis = color_iridis_base(p->color_iridis_h, p->color_iridis_s, iris_l);
+    }
     if (p->gens == GENS_FURIARUM)
         c.iridis = color4(1.0f, 0.85f, 0.0f, 1.0f);
     if (p->gens == GENS_LARVARUM)
@@ -142,9 +179,13 @@ void redde_oculos(
     float nictus = expressio_nictus(p->tempus);
     /* Color iridis per latus — heterochromia usat color_iridis2 prō dextro */
     Color iridis_sin = col->iridis;
-    Color iridis_dex = (p->heterochromia > 0.5f)
-        ? color_iridis_base(p->color_iridis2_h, p->color_iridis2_s, 0.45f)
-        : col->iridis;
+    Color iridis_dex;
+    if (p->heterochromia > 0.5f) {
+        float l2 = 0.55f - 0.15f * p->color_iridis2_s;
+        iridis_dex = color_iridis_base(p->color_iridis2_h, p->color_iridis2_s, l2);
+    } else {
+        iridis_dex = col->iridis;
+    }
     if (p->gens == GENS_FURIARUM)
         iridis_dex = iridis_sin;  /* oculi Furiis identici */
     if (p->gens == GENS_LARVARUM)
@@ -154,10 +195,11 @@ void redde_oculos(
         Color iridis_c = (s == 0) ? iridis_sin : iridis_dex;
         OculusCtx ctx;
         ctx.c = (s == 0) ? z->oculi.sin : z->oculi.dex;
-        /* Asymmetria subtilis: unus oculus leviter maior, alter minor */
+        /* Asymmetria: signata — sin maior si positiva; adde parvum offset y */
         float asym = p->oculi_asymmetria * (s == 0 ? 1.0f : -1.0f);
-        ctx.rx = z->oculi.r_oculi_x * (1.0f + asym * 0.10f);
-        ctx.ry = z->oculi.r_oculi_y * (1.0f + asym * 0.08f);
+        ctx.rx = z->oculi.r_oculi_x * (1.0f + asym * 0.18f);
+        ctx.ry = z->oculi.r_oculi_y * (1.0f + asym * 0.14f);
+        ctx.c.y += asym * z->oculi.r_oculi_y * 0.25f;
         ctx.inclinatio = (s == 0 ? -1.0f : 1.0f) * z->oculi.inclinatio;
         /* pondus palpebrae clausit oculum leviter */
         float apertio = saturatef((1.0f - 0.7f * p->pondus_palpebrae) * nictus);
@@ -262,6 +304,36 @@ void redde_oculos(
             /* corrigor approximatus — sufficit pro cartoon */
             tabula_pinge_lineam(t, ma, mb, 1.2f, col->lineae);
         }
+
+        /* Plica epicanthica — velatio parva angulum internum tegens.
+         * s == 0 est sinister (dir_in = +1 sc. ad medium); s == 1 est dexter (dir_in = -1). */
+        if (p->plica_epicanthica > 0.10f) {
+            float dir_in = (s == 0) ? 1.0f : -1.0f;
+            float ext = p->plica_epicanthica;
+            vec2 corner = v2(ctx.c.x - dir_in * ctx.rx * 0.95f, ctx.c.y);
+            vec2 over = v2(
+                corner.x + dir_in * ctx.rx * 0.35f * ext,
+                corner.y - ctx.ry * 0.20f * ext
+            );
+            vec2 down = v2(
+                corner.x + dir_in * ctx.rx * 0.10f * ext,
+                corner.y + ctx.ry * 0.55f * ext
+            );
+            Color plica_c = col->lineae;
+            plica_c.a = 0.55f + 0.35f * ext;
+            int Np = 6;
+            vec2 prev = over;
+            for (int i = 1; i <= Np; i++) {
+                float u = (float)i / (float)Np;
+                float om = 1.0f - u;
+                vec2 pt = v2(
+                    om*om*over.x + 2*om*u*corner.x + u*u*down.x,
+                    om*om*over.y + 2*om*u*corner.y + u*u*down.y
+                );
+                tabula_pinge_lineam(t, prev, pt, 0.9f, plica_c);
+                prev = pt;
+            }
+        }
     }
 }
 
@@ -312,16 +384,27 @@ void redde_nasum(
     float lat = z->nasus.lat;
     float alt = z->nasus.alt;
 
-    /* Umbrae subtiles in lateribus pontis */
+    /* Umbrae subtiles in lateribus pontis.
+     * altitudo_pontis [0..1]: 0 = pons planus (nullum contrast), 1 = pons altus cum
+     * umbra densa et nitore medio. */
     float ponte_lat = z->nasus.pontis_lat;
-    /* Pingimus non-umbra directe, sed umbram subtiliter per mixtura */
+    float pons_alt  = p->altitudo_pontis;
     Color umb = col->cutis_umbra;
-    umb.a = 0.35f;
+    umb.a = 0.20f + 0.45f * pons_alt;
 
     /* Linea dextra umbrata */
     vec2 a1 = v2(c.x + ponte_lat * 0.8f, c.y - alt * 0.4f);
     vec2 b1 = v2(c.x + ponte_lat * 0.9f, c.y + alt * 0.3f);
-    tabula_pinge_lineam(t, a1, b1, 1.0f, umb);
+    tabula_pinge_lineam(t, a1, b1, 1.0f + 0.8f * pons_alt, umb);
+
+    /* Nitor medianus super pontem — tantum si pons altus */
+    if (pons_alt > 0.35f) {
+        Color lux_pons = col->cutis_lux;
+        lux_pons.a = 0.25f * (pons_alt - 0.35f) / 0.65f;
+        vec2 la = v2(c.x, c.y - alt * 0.45f);
+        vec2 lb = v2(c.x, c.y + alt * 0.10f);
+        tabula_pinge_lineam(t, la, lb, 0.9f, lux_pons);
+    }
 
     /* Apex nasi — ellipsis parva umbrata.  Formam modificant forma_apicis. */
     float apex_rx = lat * (0.5f + 0.3f * p->forma_apicis);
@@ -340,6 +423,20 @@ void redde_nasum(
     float nares_r  = lat * (0.12f + 0.10f * p->dilatatio_narium);
     tabula_pinge_discum(t, v2(c.x - nares_dx, c.y + alt * 0.42f), nares_r, naris);
     tabula_pinge_discum(t, v2(c.x + nares_dx, c.y + alt * 0.42f), nares_r, naris);
+
+    /* Philtrum — sulcus inter nasum et labium superius.
+     * Duae lineae umbratae verticales, profunditas per profunditas_philtri. */
+    if (p->profunditas_philtri > 0.08f) {
+        Color phil = col->cutis_umbra;
+        phil.a = 0.25f + 0.45f * p->profunditas_philtri;
+        float phil_dx = lat * (0.12f + 0.04f * p->profunditas_philtri);
+        float y_top = c.y + alt * 0.55f;
+        float y_bot = z->os.centrum.y - z->os.alt * 1.2f;
+        if (y_bot > y_top) {
+            tabula_pinge_lineam(t, v2(c.x - phil_dx, y_top), v2(c.x - phil_dx, y_bot), 0.7f, phil);
+            tabula_pinge_lineam(t, v2(c.x + phil_dx, y_top), v2(c.x + phil_dx, y_bot), 0.7f, phil);
+        }
+    }
 }
 
 /* ------------------------------------------------------------------ */

@@ -5,7 +5,7 @@
  * adhibentur. Exitus: PPM binarius (P6), 128×128 puncta.
  *
  * Usus brevissimus:
- *   imago_crea_ppm(seed, ARCH_LAR, GENS_HUMANA, MODUS_CARTOON, 0.0f, "out.ppm");
+ *   imago_crea_ppm(seed, ARCH_LAR, GENS_HUMANA, MODUS_COMICUS, 0.0f, "out.ppm");
  */
 #ifndef HOMUNCIO_H
 #define HOMUNCIO_H
@@ -44,7 +44,7 @@ extern "C" {
         ARCH_QUIRINUS,     /* Romulus divus, deus militaris — cicatrices, cutis intemperie tacta */
         ARCH_CARNA,        /* dea valetudinis et viscerum — lenia lineamenta, vultus benignus */
         ARCH_GENIUS,       /* spiritus personalis divinus — iuvenis, rotundus, oculi magni */
-        ARCH_FLAMEN,       /* sacerdos dei unius — elegantia, compositus, malae altae */
+        ARCH_FLAMEN,       /* sacerdos uni numini dedicatus — elegantia, compositus, malae altae */
         ARCH_FAUNUS,       /* spiritus silvester versipellis — asymmetricus, subrisus, scientes oculi */
         ARCH_NUMERUS,
     } Archetypum;
@@ -53,12 +53,12 @@ extern "C" {
     typedef enum {
         GENS_HUMANA = 0,      /* mortales */
         GENS_NYMPHARUM,       /* nymphae — spiritus pulchri naturae, alti, aures acutae */
-        GENS_NANORUM,         /* nani — breves, barba densa, crassi membris */
+        GENS_PYGMAEORUM,      /* pygmaei — gens parva bellicosa apud Plinium et Homerum, gruibus hostis */
         GENS_GIGANTUM,        /* gigantes — immanes, dentes exserti, cutis tincta */
         GENS_PENATIUM,        /* penates — parvi rotundi, protectores penuariae */
         GENS_LARVARUM,        /* larvae — umbrae mortuorum, pallidae, oculi concavi */
-        GENS_FURIARUM,        /* furiae — spiritus vindictae, cornua, pupillae fissae */
-        GENS_SATYRORUM,       /* satyri — rustici silvestres, cornicula, nasus magnus */
+        GENS_FURIARUM,        /* furiae — spiritus vindictae, oculi sanguinei, pupillae fissae, serpentes in coma */
+        GENS_SATYRORUM,       /* satyri — rustici silvestres, cornicula parva, nasus magnus */
         GENS_NUMERUS,
     } Gens;
 
@@ -84,6 +84,16 @@ extern "C" {
         BARBA_BIFIDA,
         BARBA_NUMERUS,
     } ModusBarbae;
+
+    typedef enum {
+        DENTES_NULLI = 0,        /* nulli conspicui */
+        DENTES_CANINI_INFERI,    /* duo dentes acuti ex labio inferiore — gigantes, orci */
+        DENTES_CANINI_SUPERI,    /* duo dentes acuti descendentes super labium inferius */
+        DENTES_SINGULARIS,       /* unus tantum dens — asymmetricus, comicus */
+        DENTES_RUPTI,            /* ordo interruptus cum lacunis — aetas aut pugna */
+        DENTES_ORDO,             /* ordo plenus albus — subrisus patens */
+        DENTES_NUMERUS,
+    } ModusDentium;
 
     typedef enum {
         MUSTACIA_NULLA = 0,
@@ -112,16 +122,17 @@ extern "C" {
         ORNAMENTUM_VITTA,           /* fascia sacerdotalis */
         ORNAMENTUM_PILEUS,          /* pileus libertatis conicus */
         ORNAMENTUM_DIADEMA,         /* diadema aureum cum gemma */
+        ORNAMENTUM_FEX,             /* pileum cylindricum truncatum cum fimbria pendente */
         ORNAMENTUM_NUMERUS,
     } ModusOrnamenti;
 
     typedef enum {
-        MODUS_CARTOON = 0,
-        MODUS_PIXEL,
+        MODUS_COMICUS = 0,       /* rīsum movēns, trēs tonī + līneāmenta */
+        MODUS_TESSELLATUS,       /* more mūsīvī Rōmānī — tēsserae quadrātae */
         MODUS_ATRAMENTUM,
         MODUS_PICTUM,
         MODUS_LUDICRUM_VIII,
-        MODUS_ANIME,
+        MODUS_ORIENTALIS,        /* stylus Orientis — colōrēs saturātī, cellae nitidae */
         MODUS_NIGER,
         MODUS_NUMERUS,
     } ModusArtis;
@@ -138,6 +149,12 @@ extern "C" {
         FX_POSTERIZATIO,
         FX_LINEAE_PROMINENTES,
         FX_NITOR,
+        FX_PATINA,              /* oxidatio aerea — viridis-caeruleus in umbris */
+        FX_FRESCO,              /* stylus Pompeianus — tonus terreus + mollitia */
+        FX_AURUM,               /* folium aureum super lucidissimas partes */
+        FX_MOSAICUM,            /* tesserae cum lineis commissuralibus */
+        FX_SOLARIZATIO,         /* inversio tonalis super limine */
+        FX_RIMAE,               /* rete rimarum mirariarum */
         FX_NUMERUS,
     } PostEffectus;
 
@@ -209,6 +226,16 @@ extern "C" {
         Imago* im, uint8_t* rgba, ModusArtis modus,
         PostEffectus fx1, float vis_fx1,
         PostEffectus fx2, float vis_fx2,
+        float tempus
+    );
+
+/* Redditio in duobus stratis: fx separati applicantur fundo et figurae.
+ * Permittit fx audaces in fundo (e.g. halftone, posterizatio) sine corruptione
+ * figurae.  fx_bg/fx_fg potest esse FX_NULLUS pro nullo effectu. */
+    void imago_redde_bgfg(
+        Imago* im, uint8_t* rgba, ModusArtis modus,
+        PostEffectus fx_bg, float vis_bg,
+        PostEffectus fx_fg, float vis_fg,
         float tempus
     );
 

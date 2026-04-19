@@ -168,6 +168,19 @@ void redde_cutis_base(
             }
         }
     }
+
+    /* Rima menti — sulcus verticalis in medio menti; vitanda si barba plena obtegit */
+    if (p->rima_menti > 0.12f && p->modus_barbae != BARBA_PLENA && p->modus_barbae != BARBA_PROLIXA) {
+        Color rim = col->cutis_umbra;
+        rim.a = 0.35f + 0.45f * p->rima_menti;
+        float mx = z->mentum.centrum.x;
+        float my_top = z->os.centrum.y + z->os.alt * 2.0f;
+        float my_bot = z->mentum.centrum.y + z->mentum.r * 0.55f;
+        float len = (my_bot - my_top) * (0.45f + 0.55f * p->rima_menti);
+        if (len > 2.0f) {
+            tabula_pinge_lineam(t, v2(mx, my_top), v2(mx, my_top + len), 1.0f + 0.6f * p->rima_menti, rim);
+        }
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -332,17 +345,93 @@ void redde_dentes(
     const PalettaFaciei* col
 ) {
     (void)col;
-    if (p->magnitudo_dentis < 0.05f)
+    if (p->modus_dentium == DENTES_NULLI)
         return;
-    float sz = p->magnitudo_dentis;
+    float sz = (p->magnitudo_dentis < 0.05f) ? 0.5f : p->magnitudo_dentis;
     Color alb = color4(0.95f, 0.93f, 0.85f, 1.0f);
-    /* Duo dentes parvi exserti ex ore */
-    float y = z->os.centrum.y + z->os.alt * 1.3f;
-    float dx = z->os.lat * 0.35f;
-    float tooth_w = 1.5f + 1.5f * sz;
-    float tooth_h = 1.0f + 3.0f * sz;
-    for (int s = 0; s < 2; s++) {
-        float x = z->os.centrum.x + (s == 0 ? -1.0f : 1.0f) * dx;
-        tabula_pinge_lineam(t, v2(x, y - tooth_h), v2(x, y), tooth_w, alb);
+    Color umb = color4(0.05f, 0.04f, 0.05f, 0.85f);
+    Color flavus = color4(0.75f, 0.70f, 0.55f, 1.0f);  /* dens vetus */
+
+    float os_cx = z->os.centrum.x;
+    float os_lat = z->os.lat;
+    /* labium superius subter (ubi dentes superi protrudunt) */
+    float y_sup_edge = z->os.centrum.y - z->os.alt * 0.1f;
+    /* labium inferius super (ubi dentes inferi protrudunt) */
+    float y_inf_edge = z->os.centrum.y + z->os.alt * 1.3f;
+
+    switch (p->modus_dentium) {
+    case DENTES_CANINI_INFERI: {
+            float dx = os_lat * 0.35f;
+            float tw = 1.5f + 1.5f * sz;
+            float th = 1.0f + 3.0f * sz;
+            for (int s = 0; s < 2; s++) {
+                float x = os_cx + (s == 0 ? -1.0f : 1.0f) * dx;
+                tabula_pinge_lineam(t, v2(x, y_inf_edge - th), v2(x, y_inf_edge), tw, alb);
+            }
+            break;
+        }
+    case DENTES_CANINI_SUPERI: {
+        /* Fangae superiōrēs descendentes super labium inferius */
+            float dx = os_lat * 0.30f;
+            float tw = 1.4f + 1.6f * sz;
+            float th = 1.5f + 3.5f * sz;
+            for (int s = 0; s < 2; s++) {
+                float x = os_cx + (s == 0 ? -1.0f : 1.0f) * dx;
+                tabula_pinge_lineam(t, v2(x, y_sup_edge), v2(x, y_sup_edge + th), tw, alb);
+            /* puncta acuta extrema */
+                tabula_pinge_discum(t, v2(x, y_sup_edge + th), tw * 0.45f, alb);
+            }
+            break;
+        }
+    case DENTES_SINGULARIS: {
+        /* Unus dens asymmetricus — sinistra aut dextra per semen */
+            Sors ss = sors_deriva(p->semen, 0xD001u);
+            float side = (sors_f32(&ss) < 0.5f) ? -1.0f : 1.0f;
+            float x = os_cx + side * os_lat * 0.25f;
+            float tw = 1.8f + 2.0f * sz;
+            float th = 1.5f + 3.5f * sz;
+            tabula_pinge_lineam(t, v2(x, y_inf_edge - th), v2(x, y_inf_edge), tw, alb);
+            break;
+        }
+    case DENTES_RUPTI: {
+        /* Ordo interruptus — 5 positiones, aliquot vacuae aut rupti */
+            Sors ss = sors_deriva(p->semen, 0xD002u);
+            int N = 5;
+            float tw = 1.6f + 1.0f * sz;
+            float th = 1.2f + 2.2f * sz;
+            for (int i = 0; i < N; i++) {
+                float u = (float)i / (float)(N - 1);
+                float x = os_cx + (u - 0.5f) * os_lat * 1.1f;
+                float r = sors_f32(&ss);
+                if (r < 0.35f)
+                    continue;  /* lacuna */
+                Color dc = (r < 0.60f) ? flavus : alb;
+                float th_act = (r < 0.50f) ? th * 0.55f : th;  /* dens ruptus brevior */
+                tabula_pinge_lineam(t, v2(x, y_inf_edge - th_act), v2(x, y_inf_edge), tw, dc);
+            }
+            break;
+        }
+    case DENTES_ORDO: {
+        /* Ordo plenus — subrisus patens.  Solum si os apertum aut magnum. */
+            float open = saturatef((p->altitudo_oris - 0.50f) * 2.0f);
+            if (open < 0.15f && p->angulus_anguli_oris < 0.25f)
+                return;  /* nihil ostendit nisi patens aut risus */
+            int N = 7;
+            float tw = 1.5f + 0.8f * sz;
+            float th = 2.0f + 2.0f * sz;
+        /* Background obscurus inter dentes */
+            float ymid = (y_sup_edge + y_inf_edge) * 0.5f;
+            tabula_pinge_lineam(
+                t, v2(os_cx - os_lat * 0.7f, ymid), v2(os_cx + os_lat * 0.7f, ymid),
+                th + 1.5f, umb
+            );
+            for (int i = 0; i < N; i++) {
+                float u = (float)i / (float)(N - 1);
+                float x = os_cx + (u - 0.5f) * os_lat * 1.3f;
+                tabula_pinge_lineam(t, v2(x, ymid - th * 0.5f), v2(x, ymid + th * 0.5f), tw, alb);
+            }
+            break;
+        }
+    default: break;
     }
 }

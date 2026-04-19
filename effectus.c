@@ -242,6 +242,175 @@ static void fx_nitor(Tabula* t, float vis, float tempus) {
     tabula_dele(c);
 }
 
+/* FX_PATINA: oxidatio aerea — tonus viridis-caeruleus in umbris, umbilicus aureus in lucibus */
+static void fx_patina(Tabula* t, float vis) {
+    int n = t->w * t->h;
+    for (int i = 0; i < n; i++) {
+        float r = t->pixels[i*4+0];
+        float g = t->pixels[i*4+1];
+        float b = t->pixels[i*4+2];
+        float l = 0.299f * r + 0.587f * g + 0.114f * b;
+        /* umbra: verdigris (0.28, 0.55, 0.42); lux: metallum obscurum (0.45, 0.40, 0.22) */
+        float ru = 0.25f, gu = 0.55f, bu = 0.45f;
+        float rl = 0.50f, gl = 0.42f, bl = 0.20f;
+        /* Mix factor per lum: low lum → umbra verdigris, high lum → metallum */
+        float pr = (1.0f - l) * ru + l * rl;
+        float pg = (1.0f - l) * gu + l * gl;
+        float pb = (1.0f - l) * bu + l * bl;
+        /* Mix cum origine per vis */
+        t->pixels[i*4+0] = mixf(r, pr, vis * 0.75f);
+        t->pixels[i*4+1] = mixf(g, pg, vis * 0.75f);
+        t->pixels[i*4+2] = mixf(b, pb, vis * 0.75f);
+    }
+}
+
+/* FX_FRESCO: stylus Pompeianus — tonus terreus, mollitia, hint rimarum */
+static void fx_fresco(Tabula* t, float vis) {
+    int w = t->w, h = t->h;
+    Tabula* c = tabula_clona(t);
+    if (!c)
+        return;
+    /* Blur parva 3x3 */
+    for (int y = 1; y < h - 1; y++) {
+        for (int x = 1; x < w - 1; x++) {
+            int i = (y * w + x) * 4;
+            for (int k = 0; k < 3; k++) {
+                float s = 0.0f;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                        s += c->pixels[((y+dy)*w + x+dx)*4 + k];
+                float blurred = s / 9.0f;
+                t->pixels[i+k] = mixf(t->pixels[i+k], blurred, vis * 0.6f);
+            }
+        }
+    }
+    tabula_dele(c);
+    /* Tonus terreus: desat + shift ad aurantium/ochram */
+    int n = w * h;
+    for (int i = 0; i < n; i++) {
+        float r = t->pixels[i*4+0];
+        float g = t->pixels[i*4+1];
+        float b = t->pixels[i*4+2];
+        float lum = 0.299f * r + 0.587f * g + 0.114f * b;
+        /* Mix cum ochra (0.72, 0.55, 0.30) proportionate ad lum */
+        float tr = mixf(0.25f, 0.78f, lum);
+        float tg = mixf(0.18f, 0.60f, lum);
+        float tb = mixf(0.12f, 0.32f, lum);
+        t->pixels[i*4+0] = mixf(r, tr, vis * 0.45f);
+        t->pixels[i*4+1] = mixf(g, tg, vis * 0.45f);
+        t->pixels[i*4+2] = mixf(b, tb, vis * 0.45f);
+    }
+}
+
+/* FX_AURUM: folium aureum super partes lucidissimas (l > 0.75) */
+static void fx_aurum(Tabula* t, float vis) {
+    int n = t->w * t->h;
+    for (int i = 0; i < n; i++) {
+        float r = t->pixels[i*4+0];
+        float g = t->pixels[i*4+1];
+        float b = t->pixels[i*4+2];
+        float l = 0.299f * r + 0.587f * g + 0.114f * b;
+        float gold_mask = smoothstepf(0.70f, 0.92f, l);
+        if (gold_mask < 0.001f)
+            continue;
+        /* Aurum: R=0.95, G=0.78, B=0.20; cum subtlě shimmer ex l ipso */
+        float ar = 0.95f * (0.85f + 0.15f * l);
+        float ag = 0.78f * (0.80f + 0.20f * l);
+        float ab = 0.22f * l;
+        float mix = gold_mask * vis;
+        t->pixels[i*4+0] = mixf(r, ar, mix);
+        t->pixels[i*4+1] = mixf(g, ag, mix);
+        t->pixels[i*4+2] = mixf(b, ab, mix);
+    }
+}
+
+/* FX_MOSAICUM: tesserae quadrata cum lineis commissuralibus obscuris */
+static void fx_mosaicum(Tabula* t, float vis) {
+    int w = t->w, h = t->h;
+    Tabula* c = tabula_clona(t);
+    if (!c)
+        return;
+    int cell = 4;
+    for (int y = 0; y < h; y += cell) {
+        for (int x = 0; x < w; x += cell) {
+            /* Color medius cellae */
+            float sr = 0, sg = 0, sb = 0;
+            int cnt = 0;
+            for (int dy = 0; dy < cell && y+dy < h; dy++) {
+                for (int dx = 0; dx < cell && x+dx < w; dx++) {
+                    int i = ((y+dy)*w + x+dx) * 4;
+                    sr += c->pixels[i+0];
+                    sg += c->pixels[i+1];
+                    sb += c->pixels[i+2];
+                    cnt++;
+                }
+            }
+            float inv = 1.0f / (float)cnt;
+            sr *= inv;
+            sg *= inv;
+            sb *= inv;
+            /* Pingit cellam cum linea commissurali obscura in margine */
+            for (int dy = 0; dy < cell && y+dy < h; dy++) {
+                for (int dx = 0; dx < cell && x+dx < w; dx++) {
+                    int i = ((y+dy)*w + x+dx) * 4;
+                    int is_border = (dx == 0 || dy == 0);
+                    float mult = is_border ? 0.55f : 1.0f;
+                    float nr = sr * mult;
+                    float ng = sg * mult;
+                    float nb = sb * mult;
+                    t->pixels[i+0] = mixf(t->pixels[i+0], nr, vis);
+                    t->pixels[i+1] = mixf(t->pixels[i+1], ng, vis);
+                    t->pixels[i+2] = mixf(t->pixels[i+2], nb, vis);
+                }
+            }
+        }
+    }
+    tabula_dele(c);
+}
+
+/* FX_SOLARIZATIO: inversio tonalis super limine */
+static void fx_solarizatio(Tabula* t, float vis) {
+    int n = t->w * t->h;
+    float thr = 0.55f;
+    for (int i = 0; i < n; i++) {
+        for (int k = 0; k < 3; k++) {
+            float v = t->pixels[i*4+k];
+            if (v > thr) {
+                float inv = 1.0f - (v - thr) * (1.0f / (1.0f - thr));
+                t->pixels[i*4+k] = mixf(v, inv, vis);
+            }
+        }
+    }
+}
+
+/* FX_RIMAE: rete rimarum mirariarum super imaginem */
+static void fx_rimae(Tabula* t, float vis) {
+    int w = t->w, h = t->h;
+    uint32_t semen = 0xC9ACu;
+    /* Noise fieldus ad detegendas "rimas" ubi gradient est abruptus */
+    for (int y = 1; y < h - 1; y++) {
+        for (int x = 1; x < w - 1; x++) {
+            float n00 = fbm_s((float)(x-1) * 0.18f, (float)y * 0.18f, 3, 0.5f, semen);
+            float n10 = fbm_s((float)(x+1) * 0.18f, (float)y * 0.18f, 3, 0.5f, semen);
+            float n01 = fbm_s((float)x * 0.18f, (float)(y-1) * 0.18f, 3, 0.5f, semen);
+            float n11 = fbm_s((float)x * 0.18f, (float)(y+1) * 0.18f, 3, 0.5f, semen);
+            float gx = fabsf(n10 - n00);
+            float gy = fabsf(n11 - n01);
+            float mag = gx + gy;
+            /* Rima: thin dark line ubi magnitudo est prope limen */
+            if (mag > 0.45f && mag < 0.60f) {
+                float strength = (0.60f - fabsf(mag - 0.525f) * 10.0f) * vis;
+                if (strength < 0.0f)
+                    continue;
+                int i = (y * w + x) * 4;
+                t->pixels[i+0] *= (1.0f - strength * 0.7f);
+                t->pixels[i+1] *= (1.0f - strength * 0.7f);
+                t->pixels[i+2] *= (1.0f - strength * 0.7f);
+            }
+        }
+    }
+}
+
 void effectus_applica(Tabula* t, PostEffectus fx, float vis, float tempus) {
     vis = clampf(vis, 0.0f, 1.0f);
     switch (fx) {
@@ -256,6 +425,12 @@ void effectus_applica(Tabula* t, PostEffectus fx, float vis, float tempus) {
     case FX_POSTERIZATIO:     fx_posterizatio(t, vis); break;
     case FX_LINEAE_PROMINENTES: fx_lineae_prominentes(t, vis); break;
     case FX_NITOR:            fx_nitor(t, vis, tempus); break;
+    case FX_PATINA:           fx_patina(t, vis); break;
+    case FX_FRESCO:           fx_fresco(t, vis); break;
+    case FX_AURUM:            fx_aurum(t, vis); break;
+    case FX_MOSAICUM:         fx_mosaicum(t, vis); break;
+    case FX_SOLARIZATIO:      fx_solarizatio(t, vis); break;
+    case FX_RIMAE:            fx_rimae(t, vis); break;
     default: break;
     }
 }

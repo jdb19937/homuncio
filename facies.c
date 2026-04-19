@@ -95,6 +95,7 @@ void facies_default(FaciesParametra* p) {
     p->visibilitas_pororum = 0.4f;
 
     p->magnitudo_dentis = 0.0f;
+    p->modus_dentium = DENTES_NULLI;
     p->magnitudo_cornu = 0.0f;
     p->bioluminescentia = 0.0f;
 }
@@ -104,17 +105,36 @@ void facies_genera(FaciesParametra* p, uint64_t semen) {
     Sors s = sors_inita(semen);
     p->semen = semen;
 
-    p->forma_faciei = (FormaFaciei)(sors_proximus(&s) % FORMA_NUMERUS);
+    {
+        /* Formae faciēī pōnderātae — ovāleās et rotundās plūs commūnēs, quadrātās rāriōrēs */
+        float pond_fm[FORMA_NUMERUS];
+        pond_fm[FORMA_OVALIS]       = 0.38f;
+        pond_fm[FORMA_ROTUNDA]      = 0.18f;
+        pond_fm[FORMA_OBLONGA]      = 0.12f;
+        pond_fm[FORMA_CORDIS]       = 0.09f;
+        pond_fm[FORMA_TRIANGULARIS] = 0.07f;
+        pond_fm[FORMA_RHOMBI]       = 0.07f;
+        pond_fm[FORMA_QUADRATA]     = 0.05f;
+        pond_fm[FORMA_RECTA]        = 0.04f;
+        p->forma_faciei = (FormaFaciei) sors_ponderatus(&s, pond_fm, FORMA_NUMERUS);
+    }
     p->aetas        = saturatef(sors_gauss(&s, 0.45f, 0.2f));
-    p->color_cutis  = sors_f32(&s);
+    /* Cutis: distributio favet extrēma — U-shaped ut pallidissimī et obscūrissimī plūs appāreant */
+    {
+        float r = sors_f32(&s);
+        float u = (r - 0.5f) * 2.0f;      /* [-1..1] */
+        float u3 = u * u * u;              /* cubica favet extrēma */
+        p->color_cutis = saturatef(0.5f + 0.5f * u3);
+    }
     p->calor_cutis  = sors_gauss(&s, 0.5f, 0.18f);
     p->masculinitas = sors_f32(&s);
 
-    p->latitudo_faciei = saturatef(sors_gauss(&s, 0.5f, 0.12f));
-    p->altitudo_faciei = saturatef(sors_gauss(&s, 0.5f, 0.12f));
-    p->latitudo_malae  = saturatef(sors_gauss(&s, 0.5f, 0.14f));
-    p->quadratura_malae = saturatef(sors_gauss(&s, 0.4f, 0.2f));
-    p->plenitudo_genae = saturatef(sors_gauss(&s, 0.5f, 0.18f));
+    /* Sigmae latiores ut variētās intra archetypum conspicua sit */
+    p->latitudo_faciei = saturatef(sors_gauss(&s, 0.5f, 0.20f));
+    p->altitudo_faciei = saturatef(sors_gauss(&s, 0.5f, 0.20f));
+    p->latitudo_malae  = saturatef(sors_gauss(&s, 0.5f, 0.22f));
+    p->quadratura_malae = saturatef(sors_gauss(&s, 0.4f, 0.26f));
+    p->plenitudo_genae = saturatef(sors_gauss(&s, 0.5f, 0.24f));
     p->rima_menti      = saturatef(sors_f32(&s) * 0.3f);
 
     p->magnitudo_oculi       = saturatef(sors_gauss(&s, 0.5f, 0.14f));
@@ -124,12 +144,29 @@ void facies_genera(FaciesParametra* p, uint64_t semen) {
     p->plica_epicanthica     = saturatef(sors_f32(&s) * 0.6f);
     p->magnitudo_iridis      = saturatef(sors_gauss(&s, 0.5f, 0.1f));
     {
-        /* color iridis: hue in [brown, blue, green, grey, hazel] */
-        float hues[] = { 0.08f, 0.6f, 0.33f, 0.1f, 0.12f };
-        float pond[] = { 0.45f, 0.15f, 0.1f, 0.15f, 0.15f };
-        int i = sors_ponderatus(&s, pond, 5);
+        /* Color iridis: palette lata.
+         * 0=brunneus 1=caeruleus 2=viridis 3=canus 4=hazel 5=ambar 6=violaceus
+         * 7=turquoise 8=aureus 9=sanguineus 10=albus (spectralis) */
+        float hues[] = {
+            0.08f, 0.58f, 0.33f, 0.08f, 0.10f,
+            0.10f, 0.78f, 0.47f, 0.14f, 0.99f, 0.55f
+        };
+        float pond[] = {
+            0.20f, 0.12f, 0.08f, 0.08f, 0.10f,   /* naturales: 58% */
+            0.08f,                                 /* ambar */
+            0.09f, 0.08f,                          /* violaceus, turquoise */
+            0.06f, 0.06f, 0.05f                    /* aureus, sanguineus, albus — 34% wild */
+        };
+        int i = sors_ponderatus(&s, pond, 11);
         p->color_iridis_h = hues[i] + sors_spatium(&s, -0.02f, 0.02f);
-        p->color_iridis_s = saturatef(sors_gauss(&s, 0.55f, 0.2f));
+        if (i == 3)
+            p->color_iridis_s = sors_spatium(&s, 0.05f, 0.20f);  /* canus desaturatus */
+        else if (i == 10)
+            p->color_iridis_s = sors_spatium(&s, 0.00f, 0.08f);  /* albus spectralis */
+        else if (i >= 5)
+            p->color_iridis_s = saturatef(sors_gauss(&s, 0.85f, 0.10f));  /* exotici saturati */
+        else
+            p->color_iridis_s = saturatef(sors_gauss(&s, 0.60f, 0.20f));
     }
     p->venae_sclerae         = saturatef(sors_f32(&s) * 0.3f);
 
@@ -158,7 +195,8 @@ void facies_genera(FaciesParametra* p, uint64_t semen) {
     p->magnitudo_auris = saturatef(sors_gauss(&s, 0.5f, 0.12f));
     p->protrusio_auris = saturatef(sors_gauss(&s, 0.3f, 0.18f));
     p->magnitudo_lobi  = saturatef(sors_gauss(&s, 0.4f, 0.18f));
-    p->acies_auris     = 0.0f;
+    /* acies_auris: humani fere rotundi, rare acuti; variatio intra gentem */
+    p->acies_auris     = (sors_f32(&s) < 0.12f) ? saturatef(sors_gauss(&s, 0.6f, 0.25f)) : 0.0f;
 
     p->modus_comae       = (ModusComae)(sors_proximus(&s) % COMA_NUMERUS);
     p->volumen_comae     = saturatef(sors_gauss(&s, 0.55f, 0.2f));
@@ -166,22 +204,43 @@ void facies_genera(FaciesParametra* p, uint64_t semen) {
     p->altitudo_frontis  = saturatef(sors_gauss(&s, 0.5f, 0.13f));
     p->recessus_frontis  = saturatef(sors_f32(&s) * 0.4f);
     {
-        float hues_comae[] = { 0.08f, 0.06f, 0.02f, 0.0f, 0.13f };   /* brown, black, dark, deep-dark, blond */
-        float pond[] =       { 0.35f, 0.25f, 0.15f, 0.10f, 0.15f };
-        int i = sors_ponderatus(&s, pond, 5);
+        /* Plerumque naturalis: brunneus, niger, rufus, flavus. ~10% exoticus (phantasticus).
+         * hues: 0=brunneus 1=niger 2=obscurus 3=deep-dark 4=flavus 5=rufus
+         *       6=argenteus 7=viridis 8=caeruleus 9=purpureus 10=roseus */
+        float hues_comae[] = { 0.08f, 0.06f, 0.02f, 0.0f, 0.13f, 0.03f,
+            0.0f,  0.30f, 0.58f, 0.78f, 0.92f };
+        float pond[] =       { 0.30f, 0.22f, 0.12f, 0.08f, 0.13f, 0.07f,
+            0.020f, 0.015f, 0.020f, 0.020f, 0.015f };
+        int i = sors_ponderatus(&s, pond, 11);
         p->color_comae_h = hues_comae[i] + sors_spatium(&s, -0.01f, 0.01f);
         p->color_comae_s = saturatef(sors_gauss(&s, 0.55f, 0.2f));
         p->color_comae_v = saturatef(sors_gauss(&s, 0.3f, 0.2f));
         if (i == 4)
-            p->color_comae_v = saturatef(sors_gauss(&s, 0.65f, 0.1f)); /* blond clarior */
+            p->color_comae_v = saturatef(sors_gauss(&s, 0.65f, 0.1f));  /* flavus clarior */
+        else if (i == 5)
+            p->color_comae_s = saturatef(sors_gauss(&s, 0.75f, 0.1f));  /* rufus saturatior */
+        else if (i == 6) {
+            p->color_comae_s = sors_spatium(&s, 0.0f, 0.08f);            /* argenteus */
+            p->color_comae_v = sors_spatium(&s, 0.70f, 0.90f);
+        } else if (i >= 7) {
+            p->color_comae_s = saturatef(sors_gauss(&s, 0.80f, 0.12f));  /* exoticus vivus */
+            p->color_comae_v = saturatef(sors_gauss(&s, 0.45f, 0.12f));
+        }
     }
 
     p->canitudo = p->aetas > 0.6f ? saturatef((p->aetas - 0.6f) * 2.5f * sors_f32(&s)) : 0.0f;
 
-    /* Barba: tantum si masculinitas alta */
+    /* Barba: tantum si masculinitas alta; ponderatio favet variantes visibiliter distinctas */
     if (p->masculinitas > 0.55f && sors_f32(&s) < 0.6f) {
-        p->modus_barbae = (ModusBarbae)(1 + sors_proximus(&s) % (BARBA_NUMERUS - 1));
-        p->densitas_barbae = saturatef(sors_gauss(&s, 0.6f, 0.2f));
+        float pond_b[BARBA_NUMERUS];
+        pond_b[BARBA_NULLA]    = 0.00f;
+        pond_b[BARBA_STIRPS]   = 0.22f;
+        pond_b[BARBA_MAXILLAE] = 0.22f;
+        pond_b[BARBA_PLENA]    = 0.20f;
+        pond_b[BARBA_PROLIXA]  = 0.18f;
+        pond_b[BARBA_BIFIDA]   = 0.18f;
+        p->modus_barbae = (ModusBarbae) sors_ponderatus(&s, pond_b, BARBA_NUMERUS);
+        p->densitas_barbae = saturatef(sors_gauss(&s, 0.65f, 0.22f));
         p->modus_mustaciorum = (ModusMustaciorum)(sors_proximus(&s) % MUSTACIA_NUMERUS);
     } else {
         p->modus_barbae = BARBA_NULLA;
@@ -238,31 +297,56 @@ void facies_genera(FaciesParametra* p, uint64_t semen) {
     /* Ornamenta capitis — eligit modum ponderate */
     {
         float pond_o[ORNAMENTUM_NUMERUS];
-        pond_o[ORNAMENTUM_NULLUM]        = 0.70f;   /* pleraeque sine */
-        pond_o[ORNAMENTUM_CORONA_LAUREA] = 0.08f;
-        pond_o[ORNAMENTUM_GALEA]         = 0.06f;
-        pond_o[ORNAMENTUM_VITTA]         = 0.06f;
-        pond_o[ORNAMENTUM_PILEUS]        = 0.05f;
-        pond_o[ORNAMENTUM_DIADEMA]       = 0.05f;
+        pond_o[ORNAMENTUM_NULLUM]        = 0.45f;
+        pond_o[ORNAMENTUM_CORONA_LAUREA] = 0.12f;
+        pond_o[ORNAMENTUM_GALEA]         = 0.09f;
+        pond_o[ORNAMENTUM_VITTA]         = 0.09f;
+        pond_o[ORNAMENTUM_PILEUS]        = 0.08f;
+        pond_o[ORNAMENTUM_DIADEMA]       = 0.08f;
+        pond_o[ORNAMENTUM_FEX]           = 0.09f;
         p->modus_ornamenti = (ModusOrnamenti) sors_ponderatus(&s, pond_o, ORNAMENTUM_NUMERUS);
         p->color_capitis_h = sors_f32(&s);
     }
 
-    /* Heterochromia: 8% probabilitas cum colore iridis diverso */
-    if (sors_f32(&s) < 0.08f) {
+    /* Heterochromia: 10% probabilitas; secundus oculus ex palette lata */
+    if (sors_f32(&s) < 0.10f) {
         p->heterochromia = 1.0f;
-        float hues[] = { 0.08f, 0.6f, 0.33f, 0.1f, 0.12f };
-        int i = sors_proximus(&s) % 5;
+        float hues[] = {
+            0.08f, 0.58f, 0.33f, 0.10f, 0.78f,
+            0.47f, 0.14f, 0.99f
+        };
+        int i = sors_proximus(&s) % 8;
         p->color_iridis2_h = hues[i];
-        p->color_iridis2_s = saturatef(sors_gauss(&s, 0.55f, 0.2f));
+        p->color_iridis2_s = saturatef(sors_gauss(&s, 0.70f, 0.18f));
     } else {
         p->heterochromia = 0.0f;
         p->color_iridis2_h = p->color_iridis_h;
         p->color_iridis2_s = p->color_iridis_s;
     }
 
-    /* Asymmetria oculorum subtilis */
-    p->oculi_asymmetria = fabsf(sors_gauss(&s, 0.0f, 0.12f));
+    /* Asymmetria oculorum — nunc per latus signata (negativa=sin maior) */
+    p->oculi_asymmetria = sors_gauss(&s, 0.0f, 0.28f);
+    if (p->oculi_asymmetria > 1.0f)
+        p->oculi_asymmetria = 1.0f;
+    if (p->oculi_asymmetria < -1.0f)
+        p->oculi_asymmetria = -1.0f;
+
+    /* Dentes: rarissimi ut nulli plerumque; si apparent, varia forma */
+    {
+        float pond_d[DENTES_NUMERUS];
+        pond_d[DENTES_NULLI]         = 0.55f;
+        pond_d[DENTES_CANINI_INFERI] = 0.06f;    /* uptooth — ex mandibula */
+        pond_d[DENTES_CANINI_SUPERI] = 0.06f;    /* fanga — ex maxilla */
+        pond_d[DENTES_SINGULARIS]    = 0.10f;
+        pond_d[DENTES_RUPTI]         = 0.09f;
+        pond_d[DENTES_ORDO]          = 0.14f;
+        p->modus_dentium = (ModusDentium) sors_ponderatus(&s, pond_d, DENTES_NUMERUS);
+        p->magnitudo_dentis = (p->modus_dentium == DENTES_NULLI)
+            ? 0.0f : saturatef(sors_gauss(&s, 0.55f, 0.18f));
+        /* ORDO requirit os apertum aut angulum elevatum ut dentes videantur */
+        if (p->modus_dentium == DENTES_ORDO)
+            p->altitudo_oris = fmaxf(p->altitudo_oris, 0.68f);
+    }
 
     p->densitas_lentiginorum = saturatef(sors_f32(&s) * 0.7f);
     p->profunditas_rugarum   = saturatef(p->aetas * 0.7f + sors_spatium(&s, -0.1f, 0.1f));
@@ -352,8 +436,8 @@ ZonaeFaciei zonae_computa(const FaciesParametra* p, int w, int h) {
     case GENS_NYMPHARUM:     gens_mult_h = 1.08f;
         gens_mult_w = 0.92f;
         break;
-    case GENS_NANORUM:     gens_mult_h = 0.85f;
-        gens_mult_w = 1.10f;
+    case GENS_PYGMAEORUM:  gens_mult_h = 0.85f;
+        gens_mult_w = 1.05f;
         break;
     case GENS_GIGANTUM:     gens_mult_h = 0.98f;
         gens_mult_w = 1.08f;
@@ -407,12 +491,29 @@ ZonaeFaciei zonae_computa(const FaciesParametra* p, int w, int h) {
     float ear_x = z.lat_faciei * (0.82f + 0.12f * p->protrusio_auris);
     z.aures.sin = v2(z.centrum_faciei.x - ear_x, z.aures.y);
     z.aures.dex = v2(z.centrum_faciei.x + ear_x, z.aures.y);
-    if (p->gens == GENS_NYMPHARUM)
-        z.aures.acies = 1.0f;
-    else if (p->gens == GENS_PENATIUM)
-        z.aures.acies = 0.5f;
-    else
-        z.aures.acies = p->acies_auris;
+    /* Gens-specific bias miscetur cum parametro individuali ut variantia intra gentem servetur */
+    {
+        float gens_min = 0.0f, gens_max = 0.0f;
+        switch (p->gens) {
+        case GENS_NYMPHARUM: gens_min = 0.65f;
+            gens_max = 1.00f;
+            break;
+        case GENS_PENATIUM:  gens_min = 0.35f;
+            gens_max = 0.70f;
+            break;
+        case GENS_SATYRORUM: gens_min = 0.30f;
+            gens_max = 0.65f;
+            break;
+        case GENS_FURIARUM:  gens_min = 0.25f;
+            gens_max = 0.60f;
+            break;
+        default: break;
+        }
+        if (gens_max > 0.0f)
+            z.aures.acies = gens_min + (gens_max - gens_min) * (0.5f + 0.5f * p->acies_auris);
+        else
+            z.aures.acies = p->acies_auris;
+    }
 
     /* Mentum */
     z.mentum.centrum = v2(z.centrum_faciei.x, z.centrum_faciei.y + z.alt_faciei * 0.88f);

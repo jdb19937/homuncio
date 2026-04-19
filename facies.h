@@ -92,7 +92,8 @@ typedef struct {
     float visibilitas_pororum;
 
     /* --- Variantes phantasticae --- */
-    float magnitudo_dentis;
+    float         magnitudo_dentis;
+    ModusDentium  modus_dentium;
     float magnitudo_cornu;
     float bioluminescentia;
 } FaciesParametra;

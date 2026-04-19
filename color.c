@@ -55,13 +55,30 @@ Color color_cutis_basis(float color_cutis, float calor_cutis) {
     color_cutis = saturatef(color_cutis);
     calor_cutis = saturatef(calor_cutis);
 
-    /* Tonus basis in HSL */
-    /* hue: rosaceus (0.05) quando frigidior, aurantius (0.08) quando calidior */
-    float h = mixf(0.03f, 0.08f, calor_cutis);
-    /* saturatio: obscuriores sunt saturatiores */
-    float s = mixf(0.28f, 0.55f, color_cutis);
-    /* lightness: 0.88 (clarissimus) -> 0.22 (obscurissimus) */
-    float l = mixf(0.88f, 0.22f, color_cutis);
+    /* Hua: spectrum latius ab roseo-frigido (0.98, circa wrap) ad aurantio-ochreum (0.10).
+     * calor_cutis < 0.3 = frigidus (roseus porcellaneus), 0.3-0.7 = neutralis peachy,
+     * > 0.7 = calidus olivaceus/ochreus.  Cutes obscuriores shift ad warmer ochre. */
+    float h_cool = 0.99f;   /* roseus porcellaneus (wraps near 0) */
+    float h_neut = 0.05f;   /* aurantius-roseus */
+    float h_warm = 0.10f;   /* ochra/olive */
+    float h;
+    if (calor_cutis < 0.35f) {
+        float u = calor_cutis / 0.35f;
+        /* Wrap-aware interpolation ab 0.99 ad 0.05 per iter breve (per 0/1) */
+        h = (1.0f - u) * h_cool + u * (h_neut + 1.0f);
+        if (h >= 1.0f)
+            h -= 1.0f;
+    } else {
+        float u = (calor_cutis - 0.35f) / 0.65f;
+        h = mixf(h_neut, h_warm, u);
+    }
+    /* Cutes obscuriores (color_cutis alta) magis ochreae/fulvae */
+    h = mixf(h, mixf(h, 0.09f, 0.6f), color_cutis * 0.55f);
+
+    /* Saturatio: pallidi desaturati, obscuri ricchi */
+    float s = mixf(0.22f, 0.68f, color_cutis);
+    /* Lightness: ab pallidissimo ad profundum — curva non-lineara ut medius lūcidior sit */
+    float l = mixf(0.90f, 0.18f, color_cutis * color_cutis * 0.5f + color_cutis * 0.5f);
 
     HSL hsl = { h, s, l };
     return hsl_ad_color(hsl, 1.0f);

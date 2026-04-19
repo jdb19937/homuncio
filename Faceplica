@@ -29,10 +29,10 @@ OBJ := $(SRC:.c=.o)
 
 omnia: portrait matricula
 
-portrait: portrait.c $(OBJ)
+portrait: portrait.o $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-matricula: matricula.c $(OBJ)
+matricula: matricula.o $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 %.o: %.c
@@ -45,18 +45,18 @@ purga:
 # Bibliotheca exemplorum — varia semina, archetypa, gentes, modi
 exempla: portrait
 	mkdir -p exempla_out
-	./portrait -s 1  -a lar      -g humana  -m cartoon       -o exempla_out/lar.ppm
+	./portrait -s 1  -a lar      -g humana  -m comicus       -o exempla_out/lar.ppm
 	./portrait -s 2  -a manes    -g humana  -m atramentum    -o exempla_out/manes.ppm
-	./portrait -s 3  -a lemur    -g gigas   -m cartoon       -o exempla_out/lemur_gigas.ppm
-	./portrait -s 4  -a ianus    -g nympha  -m anime         -o exempla_out/ianus_nympha.ppm
+	./portrait -s 3  -a lemur    -g gigas   -m comicus       -o exempla_out/lemur_gigas.ppm
+	./portrait -s 4  -a ianus    -g nympha  -m orientalis         -o exempla_out/ianus_nympha.ppm
 	./portrait -s 5  -a augur    -g humana  -m pictum        -o exempla_out/augur.ppm
-	./portrait -s 6  -a quirinus -g nanus   -m cartoon       -o exempla_out/quirinus.ppm
+	./portrait -s 6  -a quirinus -g pygmaeus -m comicus      -o exempla_out/quirinus.ppm
 	./portrait -s 7  -a carna    -g humana  -m niger         -o exempla_out/carna.ppm
-	./portrait -s 8  -a genius   -g penates -m cartoon       -o exempla_out/genius.ppm
+	./portrait -s 8  -a genius   -g penates -m comicus       -o exempla_out/genius.ppm
 	./portrait -s 9  -a flamen   -g humana  -m ludicrum_viii -o exempla_out/flamen.ppm
-	./portrait -s 10 -a faunus   -g furia   -m cartoon       -o exempla_out/faunus_furia.ppm
+	./portrait -s 10 -a faunus   -g furia   -m comicus       -o exempla_out/faunus_furia.ppm
 	./portrait -s 11 -a lemur    -g larva   -m atramentum    -o exempla_out/lemur_larva.ppm
-	./portrait -s 12 -a ianus    -g satyrus -m anime         -o exempla_out/ianus_satyrus.ppm
+	./portrait -s 12 -a ianus    -g satyrus -m orientalis         -o exempla_out/ianus_satyrus.ppm
 	@echo "Exempla scripta in exempla_out/"
 
 linte:

@@ -3,32 +3,158 @@
 #include "sdf.h"
 #include "sors.h"
 
-/* --- Corona laurea: arcus foliorum lauri super frontem et cranium --- */
+/* --- Corona: pluribus variantibus Romanis (laurea, civica, myrtea, floralis, spicea) --- */
+
+typedef enum {
+    CR_LAUREA = 0,   /* laurus — viridis olivaceus, baccae rubrae — poetae, imperatores */
+    CR_CIVICA,       /* quercus — glandes brunneae — pro cive servato */
+    CR_MYRTEA,       /* myrtus — viridis obscurior, baccae caeruleae — Veneris, ovationis */
+    CR_FLORALIS,     /* flores rosae vel violae — festa, symposia */
+    CR_SPICEA,       /* spicae tritici — aurea stantes — Cereris */
+    CR_OLIVAE,       /* olea — argenteo-viridis, baccae nigrae — pax, Minervae */
+    CR_NUMERUS
+} CoronaTypus;
 
 static void corona_laurea(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
-    int n = 14;
-    Color leaf_base = color4(0.20f, 0.45f, 0.18f, 1.0f);   /* viridis olivaceus */
-    Color leaf_dark = color4(0.10f, 0.25f, 0.10f, 1.0f);
-    Color leaf_light = color4(0.35f, 0.60f, 0.25f, 1.0f);
+    /* Typus ponderatus: variantes non-virides saepius eliguntur ut
+     * dominantia viridis (4 ex 6 variantium natūrāliter virentēs) minuātur. */
+    Sors s_form = sors_deriva(p->semen, 0xC0F0Au);
+    float pond_cr[CR_NUMERUS];
+    pond_cr[CR_LAUREA]   = 0.15f;   /* virens */
+    pond_cr[CR_CIVICA]   = 0.10f;   /* virens */
+    pond_cr[CR_MYRTEA]   = 0.10f;   /* virens obscurus */
+    pond_cr[CR_OLIVAE]   = 0.10f;   /* virens argenteus */
+    pond_cr[CR_FLORALIS] = 0.30f;   /* roseus/violaceus — non virens */
+    pond_cr[CR_SPICEA]   = 0.25f;   /* aureus — non virens */
+    CoronaTypus typus = (CoronaTypus) sors_ponderatus(&s_form, pond_cr, CR_NUMERUS);
+
+    Color leaf_base, leaf_dark, leaf_light, berry_c;
+    int has_berry = 0;
+    switch (typus) {
+    case CR_LAUREA:
+        leaf_base  = color4(0.20f, 0.45f, 0.18f, 1.0f);
+        leaf_dark  = color4(0.10f, 0.25f, 0.10f, 1.0f);
+        leaf_light = color4(0.35f, 0.60f, 0.25f, 1.0f);
+        berry_c    = color4(0.65f, 0.15f, 0.15f, 1.0f);
+        has_berry  = 1;
+        break;
+    case CR_CIVICA:
+        leaf_base  = color4(0.28f, 0.45f, 0.15f, 1.0f);
+        leaf_dark  = color4(0.18f, 0.28f, 0.08f, 1.0f);
+        leaf_light = color4(0.50f, 0.62f, 0.22f, 1.0f);
+        berry_c    = color4(0.45f, 0.30f, 0.12f, 1.0f);  /* glans */
+        has_berry  = 1;
+        break;
+    case CR_MYRTEA:
+        leaf_base  = color4(0.10f, 0.32f, 0.18f, 1.0f);
+        leaf_dark  = color4(0.05f, 0.18f, 0.10f, 1.0f);
+        leaf_light = color4(0.22f, 0.48f, 0.28f, 1.0f);
+        berry_c    = color4(0.15f, 0.18f, 0.45f, 1.0f);
+        has_berry  = 1;
+        break;
+    case CR_FLORALIS: {
+            Sors sh = sors_deriva(p->semen, 0xF10AAu);
+            float r = sors_f32(&sh);
+            if (r < 0.5f) {  /* rosae */
+                leaf_base  = color4(0.85f, 0.35f, 0.55f, 1.0f);
+                leaf_dark  = color4(0.55f, 0.15f, 0.35f, 1.0f);
+                leaf_light = color4(0.98f, 0.65f, 0.75f, 1.0f);
+            } else {  /* violae */
+                leaf_base  = color4(0.55f, 0.35f, 0.70f, 1.0f);
+                leaf_dark  = color4(0.32f, 0.18f, 0.45f, 1.0f);
+                leaf_light = color4(0.75f, 0.55f, 0.88f, 1.0f);
+            }
+            berry_c = color4(0.95f, 0.88f, 0.25f, 1.0f);
+            has_berry = 1;
+            break;
+        }
+    case CR_SPICEA:
+        leaf_base  = color4(0.80f, 0.65f, 0.18f, 1.0f);  /* aureus tritici */
+        leaf_dark  = color4(0.55f, 0.42f, 0.10f, 1.0f);
+        leaf_light = color4(0.95f, 0.85f, 0.35f, 1.0f);
+        berry_c    = color4(0.65f, 0.50f, 0.12f, 1.0f);
+        has_berry  = 0;
+        break;
+    case CR_OLIVAE:
+    default:
+        leaf_base  = color4(0.42f, 0.50f, 0.28f, 1.0f);
+        leaf_dark  = color4(0.22f, 0.28f, 0.14f, 1.0f);
+        leaf_light = color4(0.68f, 0.72f, 0.45f, 1.0f);
+        berry_c    = color4(0.08f, 0.08f, 0.10f, 1.0f);  /* olivae nigrae */
+        has_berry  = 1;
+        break;
+    }
 
     Sors s = sors_deriva(p->semen, 0xC0A0A0u);
 
-    /* Arcus: ab latere sinistro caput supra ad latus dextrum */
     float y_center = z->frons.y_culmen - z->alt_faciei * 0.02f;
     float rx = z->lat_faciei * 1.00f;
     float ry = z->alt_faciei * 0.55f;
 
+    if (typus == CR_FLORALIS) {
+        /* Flores: discī circulārēs cum centrō lūciō, nōn folia */
+        int n = 11;
+        for (int i = 0; i < n; i++) {
+            float u = (float)i / (float)(n - 1);
+            float ang = mixf(PORTRAIT_PI * 1.05f, -PORTRAIT_PI * 0.05f, u);
+            float cx = z->centrum_faciei.x + cosf(ang) * rx;
+            float cy = y_center + sinf(ang) * ry * 0.80f;
+            float r_pet = 2.8f + sors_f32(&s) * 1.3f;
+            /* 5 petala discī intorti */
+            Color c = (i & 1) ? leaf_base : leaf_light;
+            tabula_pinge_discum(t, v2(cx, cy), r_pet, c);
+            tabula_pinge_discum(t, v2(cx, cy), r_pet * 0.4f, berry_c);
+            /* folia parva viridia inter flores */
+            if (i > 0 && (i & 1)) {
+                Color leaf_g = color4(0.20f, 0.40f, 0.18f, 1.0f);
+                float tx = -sinf(ang), ty = cosf(ang);
+                vec2 la = v2(cx - tx * 3.0f - cosf(ang) * 2.0f, cy - ty * 3.0f - sinf(ang) * 2.0f);
+                vec2 lb = v2(cx + tx * 2.0f - cosf(ang) * 2.0f, cy + ty * 2.0f - sinf(ang) * 2.0f);
+                tabula_pinge_lineam(t, la, lb, 1.6f, leaf_g);
+            }
+        }
+        return;
+    }
+
+    if (typus == CR_SPICEA) {
+        /* Spīcae tritici: stantēs verticālēs cum grānīs lateribus */
+        int n = 9;
+        for (int i = 0; i < n; i++) {
+            float u = (float)i / (float)(n - 1);
+            float ang = mixf(PORTRAIT_PI * 1.02f, -PORTRAIT_PI * 0.02f, u);
+            float cx = z->centrum_faciei.x + cosf(ang) * rx;
+            float cy_base = y_center + sinf(ang) * ry * 0.85f;
+            float stalk_len = 5.0f + sors_f32(&s) * 2.0f;
+            /* caulis */
+            vec2 a = v2(cx, cy_base);
+            vec2 top = v2(cx + sinf(ang) * 0.8f, cy_base - stalk_len);
+            tabula_pinge_lineam(t, a, top, 0.9f, leaf_dark);
+            /* grana ut paria discōrum alternantia in caule */
+            for (int k = 0; k < 4; k++) {
+                float kt = (float)k / 3.0f;
+                float gx = mixf(a.x, top.x, kt);
+                float gy = mixf(a.y, top.y, kt);
+                Color g = (k & 1) ? leaf_base : leaf_light;
+                tabula_pinge_discum(t, v2(gx - 1.2f, gy), 1.1f, g);
+                tabula_pinge_discum(t, v2(gx + 1.2f, gy), 1.1f, g);
+            }
+        }
+        return;
+    }
+
+    /* Foliātae: LAUREA, CIVICA, MYRTEA, OLIVAE */
+    int n = 14;
     for (int i = 0; i < n; i++) {
         float u = (float)i / (float)(n - 1);
-        /* Angulus ab ~195 deg ad ~-15 deg (arcus supra) */
         float ang = mixf(PORTRAIT_PI * 1.05f, -PORTRAIT_PI * 0.05f, u);
         float cx = z->centrum_faciei.x + cosf(ang) * rx;
         float cy = y_center + sinf(ang) * ry * 0.80f;
 
-        /* Folium: lens orientatum tangentialiter arcui */
         float tx = -sinf(ang);
         float ty = cosf(ang);
         float leaf_len = 4.5f + sors_f32(&s) * 2.0f;
+        /* CIVICA: folia latiora; MYRTEA: angustiora */
+        float leaf_w = (typus == CR_CIVICA) ? 3.2f : (typus == CR_MYRTEA ? 1.8f : 2.4f);
         vec2 a = v2(cx - tx * leaf_len, cy - ty * leaf_len);
         vec2 b = v2(cx + tx * leaf_len, cy + ty * leaf_len);
 
@@ -40,17 +166,17 @@ static void corona_laurea(Tabula* t, const FaciesParametra* p, const ZonaeFaciei
             c = leaf_base;
         else
             c = leaf_light;
-        tabula_pinge_lineam(t, a, b, 2.4f, c);
+        tabula_pinge_lineam(t, a, b, leaf_w, c);
     }
 
-    /* Bacca interdum — parva rubra inter folia */
-    if (sors_f32(&s) < 0.4f) {
-        Color berry = color4(0.65f, 0.15f, 0.15f, 1.0f);
-        for (int i = 0; i < 3; i++) {
+    if (has_berry && sors_f32(&s) < 0.5f) {
+        int nb = (typus == CR_OLIVAE || typus == CR_MYRTEA) ? 4 : 3;
+        float br = (typus == CR_CIVICA) ? 1.6f : 1.2f;
+        for (int i = 0; i < nb; i++) {
             float ang = sors_spatium(&s, PORTRAIT_PI * 0.8f, PORTRAIT_PI * 0.2f);
             float bx = z->centrum_faciei.x + cosf(ang) * rx * 0.95f;
             float by = y_center + sinf(ang) * ry * 0.75f;
-            tabula_pinge_discum(t, v2(bx, by), 1.2f, berry);
+            tabula_pinge_discum(t, v2(bx, by), br, berry_c);
         }
     }
 }
@@ -310,6 +436,86 @@ static void diadema(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
     );
 }
 
+/* --- Fex: pileum cylindricum truncatum cum fimbria --- */
+
+static void fex(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
+    /* Color ex color_capitis_h: ruber (classicus) 50%, alii 50% */
+    Sors s = sors_deriva(p->semen, 0xFE6EEu);
+    float roll = sors_f32(&s);
+    Color body, body_dark, body_lux;
+    if (roll < 0.50f) {
+        /* ruber classicus */
+        body      = color4(0.58f, 0.10f, 0.10f, 1.0f);
+        body_dark = color4(0.35f, 0.05f, 0.05f, 1.0f);
+        body_lux  = color4(0.78f, 0.20f, 0.15f, 1.0f);
+    } else if (roll < 0.70f) {
+        body      = color4(0.15f, 0.15f, 0.20f, 1.0f);  /* niger */
+        body_dark = color4(0.05f, 0.05f, 0.08f, 1.0f);
+        body_lux  = color4(0.35f, 0.35f, 0.40f, 1.0f);
+    } else if (roll < 0.85f) {
+        body      = color4(0.12f, 0.20f, 0.45f, 1.0f);  /* caeruleus */
+        body_dark = color4(0.05f, 0.10f, 0.28f, 1.0f);
+        body_lux  = color4(0.30f, 0.42f, 0.65f, 1.0f);
+    } else {
+        body      = color4(0.40f, 0.30f, 0.10f, 1.0f);  /* fulvus/brunneus */
+        body_dark = color4(0.22f, 0.16f, 0.05f, 1.0f);
+        body_lux  = color4(0.62f, 0.50f, 0.22f, 1.0f);
+    }
+
+    /* Geōmetria: cylindricum truncatum — lātius et altius quam cranium, ut anguli comae non excedant */
+    float base_y   = z->frons.y_frons + 1.0f;
+    float top_y    = z->frons.y_culmen - z->alt_faciei * 0.28f;
+    float base_hw  = z->lat_faciei * 1.18f;
+    float top_hw   = z->lat_faciei * 1.12f;
+
+    /* Corpus: plenum rectangulum cum sphaeris rotundatīs */
+    int N = 18;
+    for (int i = 0; i < N; i++) {
+        float u = (float)i / (float)(N - 1);
+        float cy = mixf(base_y, top_y, u);
+        float hw = mixf(base_hw, top_hw, u);
+        /* Paulō sinus in medio — shade variatus */
+        Color c = body;
+        if (u < 0.15f) c = body_dark;      /* umbra basi */
+        else if (u > 0.85f) c = body_lux;  /* lux top */
+        tabula_pinge_lineam(t, v2(z->centrum_faciei.x - hw, cy),
+                            v2(z->centrum_faciei.x + hw, cy), 2.2f, c);
+    }
+
+    /* Margō rotundus in summo — ellipsis parva */
+    tabula_pinge_lineam(
+        t, v2(z->centrum_faciei.x - top_hw, top_y),
+        v2(z->centrum_faciei.x + top_hw, top_y), 2.5f, body_dark
+    );
+
+    /* Reflectio lucis super latus sinistrum */
+    tabula_pinge_lineam(
+        t, v2(z->centrum_faciei.x - base_hw * 0.7f, base_y + 4.0f),
+        v2(z->centrum_faciei.x - base_hw * 0.55f, top_y + 4.0f),
+        1.6f, body_lux
+    );
+
+    /* Fimbria pendens ex summo — chorda + nodus + fila */
+    Color tassel_base = body_dark;
+    Color tassel_cord = body;
+    float tx = z->centrum_faciei.x + top_hw * 0.20f;  /* offset dextram */
+    float ty = top_y;
+    /* Chorda ex top ad latus */
+    vec2 cord_a = v2(tx, ty);
+    vec2 cord_b = v2(tx + base_hw * 0.35f, ty + z->alt_faciei * 0.12f);
+    tabula_pinge_lineam(t, cord_a, cord_b, 1.2f, tassel_cord);
+    /* Nodus medius */
+    tabula_pinge_discum(t, cord_b, 1.8f, tassel_base);
+    /* Fila pendentia — 5 līneae breves */
+    for (int i = 0; i < 5; i++) {
+        float fx_off = (i - 2) * 1.0f;
+        vec2 fa = v2(cord_b.x + fx_off, cord_b.y + 1.0f);
+        vec2 fb = v2(cord_b.x + fx_off * 1.5f,
+                     cord_b.y + z->alt_faciei * 0.10f + sors_spatium(&s, -1.0f, 2.0f));
+        tabula_pinge_lineam(t, fa, fb, 0.9f, tassel_cord);
+    }
+}
+
 /* --- Dispatcher --- */
 
 void redde_ornamenta_capitis(
@@ -323,6 +529,7 @@ void redde_ornamenta_capitis(
     case ORNAMENTUM_VITTA:         vitta(t, p, z);         break;
     case ORNAMENTUM_PILEUS:        pileus(t, p, z);        break;
     case ORNAMENTUM_DIADEMA:       diadema(t, p, z);       break;
+    case ORNAMENTUM_FEX:           fex(t, p, z);           break;
     default: break;
     }
 }

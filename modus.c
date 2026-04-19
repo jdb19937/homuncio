@@ -6,10 +6,10 @@
 #include <string.h>
 
 /* ------------------------------------------------------------------ */
-/* CARTOON: 3-tone posterization + outline                            */
+/* COMICUS: 3-tone posterization + outline                            */
 /* ------------------------------------------------------------------ */
 
-static void modus_cartoon(Tabula* t) {
+static void modus_comicus(Tabula* t) {
     int w = t->w, h = t->h;
     /* Posterizatio: 3-4 gradus */
     for (int i = 0; i < w * h; i++) {
@@ -45,10 +45,10 @@ static void modus_cartoon(Tabula* t) {
 }
 
 /* ------------------------------------------------------------------ */
-/* PIXEL: quantize to small palette + downsample + upsample           */
+/* TESSELLATUS: more musivi Romani — quadrata reducta + palette parva */
 /* ------------------------------------------------------------------ */
 
-static void modus_pixel(Tabula* t) {
+static void modus_tessellatus(Tabula* t) {
     int w = t->w, h = t->h;
     int pixsize = 4;  /* 32x32 → 128 */
     int pw = w / pixsize;
@@ -229,10 +229,10 @@ static void modus_ludicrum_viii(Tabula* t) {
 }
 
 /* ------------------------------------------------------------------ */
-/* ANIME: color saturation boost + soft edges + cel                   */
+/* ORIENTALIS: stylus Orientis — colores saturati, cellae nitidae     */
 /* ------------------------------------------------------------------ */
 
-static void modus_anime(Tabula* t) {
+static void modus_orientalis(Tabula* t) {
     int w = t->w, h = t->h;
     for (int i = 0; i < w * h; i++) {
         Color c = color4(t->pixels[i*4+0], t->pixels[i*4+1], t->pixels[i*4+2], 1);
@@ -281,12 +281,12 @@ static void modus_niger(Tabula* t) {
 void modus_applica(Tabula* t, ModusArtis modus, float tempus) {
     (void)tempus;
     switch (modus) {
-    case MODUS_CARTOON:      modus_cartoon(t);      break;
-    case MODUS_PIXEL:        modus_pixel(t);        break;
+    case MODUS_COMICUS:      modus_comicus(t);      break;
+    case MODUS_TESSELLATUS:  modus_tessellatus(t);  break;
     case MODUS_ATRAMENTUM:   modus_atramentum(t);   break;
     case MODUS_PICTUM:       modus_pictum(t);       break;
     case MODUS_LUDICRUM_VIII:modus_ludicrum_viii(t);break;
-    case MODUS_ANIME:        modus_anime(t);        break;
+    case MODUS_ORIENTALIS:   modus_orientalis(t);   break;
     case MODUS_NIGER:        modus_niger(t);        break;
     default: break;
     }
