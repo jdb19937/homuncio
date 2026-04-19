@@ -83,8 +83,10 @@ static void galea(Tabula* t, const FaciesParametra* p, const ZonaeFaciei* z) {
     /* Metallum per color_capitis_h: aes, ferrum, argentum, cuprum, nigrum */
     Color bronze, bronze_dark, bronze_lux;
     int metallum = (int)(p->color_capitis_h * 5.0f);
-    if (metallum > 4) metallum = 4;
-    if (metallum < 0) metallum = 0;
+    if (metallum > 4)
+        metallum = 4;
+    if (metallum < 0)
+        metallum = 0;
     switch (metallum) {
     case 0: /* aes (yellow-gold bronze) */
         bronze      = color4(0.55f, 0.40f, 0.15f, 1.0f);
