@@ -297,13 +297,13 @@ void facies_genera(FaciesParametra* p, uint64_t semen) {
     /* Ornamenta capitis — eligit modum ponderate */
     {
         float pond_o[ORNAMENTUM_NUMERUS];
-        pond_o[ORNAMENTUM_NULLUM]        = 0.45f;
-        pond_o[ORNAMENTUM_CORONA_LAUREA] = 0.12f;
-        pond_o[ORNAMENTUM_GALEA]         = 0.09f;
-        pond_o[ORNAMENTUM_VITTA]         = 0.09f;
-        pond_o[ORNAMENTUM_PILEUS]        = 0.08f;
-        pond_o[ORNAMENTUM_DIADEMA]       = 0.08f;
-        pond_o[ORNAMENTUM_FEX]           = 0.09f;
+        pond_o[ORNAMENTUM_NULLUM]        = 0.65f;
+        pond_o[ORNAMENTUM_CORONA_LAUREA] = 0.08f;
+        pond_o[ORNAMENTUM_GALEA]         = 0.06f;
+        pond_o[ORNAMENTUM_VITTA]         = 0.06f;
+        pond_o[ORNAMENTUM_PILEUS]        = 0.05f;
+        pond_o[ORNAMENTUM_DIADEMA]       = 0.05f;
+        pond_o[ORNAMENTUM_FEX]           = 0.05f;
         p->modus_ornamenti = (ModusOrnamenti) sors_ponderatus(&s, pond_o, ORNAMENTUM_NUMERUS);
         p->color_capitis_h = sors_f32(&s);
     }
