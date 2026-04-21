@@ -13,8 +13,16 @@ PROMPT = (
     'a representative from [redacted] presented this as their soul identity '
     'token (it does somewhat resemble them i am told). generate a realistic '
     'portrait of this entity. the entities are humanoids. the token is an '
-    'abstract symbolic emblem, not a literal depiction — do not render it '
-    'as wounds, scars, injuries, or markings on the skin. no text. '
+    'abstract symbolic emblem representing an ideative state of life — an '
+    'inner archetype, temperament, or spiritual signature — NOT a literal '
+    'depiction of the body. the humanoid subject itself must be rendered '
+    'as a healthy, living, functional person: intact skin, normal living '
+    'complexion, clear eyes, upright posture, breathing and alive. do NOT '
+    'render the subject as a zombie, corpse, undead, wounded, decaying, '
+    'sickly, or disfigured. do not translate emblem shapes, colors, or '
+    'distortions into wounds, scars, injuries, lesions, discoloration, '
+    'sunken features, or markings on the skin. the emblem informs mood, '
+    'bearing, and aura, not anatomy. no text. '
 )
 
 

@@ -1,11 +1,5 @@
 # Makefile pro portrait — C99, nullae dependentiae praeter libm
 
-CC      ?= cc
-CFLAGS  ?= -std=c99 -O2 -Wall -Wextra -Wpedantic -Wno-unused-parameter \
-           -Wno-unused-function -Iinclude -Isrc -D_DEFAULT_SOURCE
-LDFLAGS ?=
-LDLIBS  ?= -lm
-
 SRC := \
   sors.c \
   tabula.c \
@@ -30,13 +24,16 @@ OBJ := $(SRC:.c=.o)
 omnia: portrait matricula
 
 portrait: portrait.o $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	# cc -o $@ $^ -lm
+	ldi $^
 
 matricula: matricula.o $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	# cc -o $@ $^ -lm
+	ldi $^
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	# cc -o $@ -c $<
+	ccc $<
 
 purga:
 	rm -f $(OBJ) portrait matricula portrait.o matricula.o

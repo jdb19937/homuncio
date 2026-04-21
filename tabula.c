@@ -102,7 +102,8 @@ void tabula_pinge_sdf(
 typedef struct {
     vec2 a, b;
     float r;
-}LineaCtx;
+} LineaCtx;
+
 static float sdf_linea(vec2 p, void* ctx_) {
     LineaCtx* ctx = (LineaCtx*) ctx_;
     vec2 ab = v2_sub(ctx->b, ctx->a);
@@ -123,7 +124,8 @@ void tabula_pinge_lineam(Tabula* t, vec2 a, vec2 b, float crassitudo, Color c) {
 typedef struct {
     vec2 c;
     float r;
-}DiscusCtx;
+} DiscusCtx;
+
 static float sdf_discus(vec2 p, void* ctx_) {
     DiscusCtx* ctx = (DiscusCtx*) ctx_;
     return v2_len(v2_sub(p, ctx->c)) - ctx->r;
