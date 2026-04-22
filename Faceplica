@@ -1,62 +1,59 @@
-# Makefile pro portrait — C99, nullae dependentiae praeter libm
+# homuncio — portrait et matricula ex libhomuncio.a
 
-SRC := \
-  sors.c \
-  tabula.c \
-  sdf.c \
-  tumultus.c \
-  color.c \
-  exitus.c \
-  facies.c \
-  expressio.c \
-  archetypum.c \
-  lineamenta.c \
-  coma.c \
-  cutis.c \
-  modus.c \
-  effectus.c \
-  vestis.c \
-  ornamenta.c \
-  imago.c
+PREFIX      = /opt/apotheca
+FONTES      = sors.c tabula.c sdf.c tumultus.c color.c exitus.c \
+              facies.c expressio.c archetypum.c lineamenta.c \
+              coma.c cutis.c modus.c effectus.c vestis.c \
+              ornamenta.c imago.c
+CAPITA      = sors.h tabula.h sdf.h tumultus.h color.h exitus.h \
+              facies.h expressio.h archetypum.h lineamenta.h \
+              coma.h cutis.h modus.h effectus.h vestis.h \
+              ornamenta.h commonia.h homuncio.h
+OBJECTA     = $(FONTES:.c=.o)
+BIBLIOTHECA = libhomuncio.a
 
-OBJ := $(SRC:.c=.o)
+omnia: $(BIBLIOTHECA) portrait matricula
 
-omnia: portrait matricula
-
-portrait: portrait.o $(OBJ)
-	# cc -o $@ $^ -lm
-	ldi $^
-
-matricula: matricula.o $(OBJ)
-	# cc -o $@ $^ -lm
-	ldi $^
-
-%.o: %.c
-	# cc -o $@ -c $<
+%.o: %.c $(CAPITA)
 	ccc $<
 
-purga:
-	rm -f $(OBJ) portrait matricula portrait.o matricula.o
-	rm -rf exempla_out
+$(BIBLIOTHECA): $(OBJECTA)
+	ar rcs $@ $^
 
-# Bibliotheca exemplorum — varia semina, archetypa, gentes, modi
+portrait: portrait.o $(BIBLIOTHECA)
+	ldi $^
+
+matricula: matricula.o $(BIBLIOTHECA)
+	ldi $^
+
 exempla: portrait
 	mkdir -p exempla_out
-	./portrait -s 1  -a lar      -g humana  -m comicus       -o exempla_out/lar.ppm
-	./portrait -s 2  -a manes    -g humana  -m atramentum    -o exempla_out/manes.ppm
-	./portrait -s 3  -a lemur    -g gigas   -m comicus       -o exempla_out/lemur_gigas.ppm
-	./portrait -s 4  -a ianus    -g nympha  -m orientalis         -o exempla_out/ianus_nympha.ppm
-	./portrait -s 5  -a augur    -g humana  -m pictum        -o exempla_out/augur.ppm
-	./portrait -s 6  -a quirinus -g pygmaeus -m comicus      -o exempla_out/quirinus.ppm
-	./portrait -s 7  -a carna    -g humana  -m niger         -o exempla_out/carna.ppm
-	./portrait -s 8  -a genius   -g penates -m comicus       -o exempla_out/genius.ppm
-	./portrait -s 9  -a flamen   -g humana  -m ludicrum_viii -o exempla_out/flamen.ppm
-	./portrait -s 10 -a faunus   -g furia   -m comicus       -o exempla_out/faunus_furia.ppm
-	./portrait -s 11 -a lemur    -g larva   -m atramentum    -o exempla_out/lemur_larva.ppm
-	./portrait -s 12 -a ianus    -g satyrus -m orientalis         -o exempla_out/ianus_satyrus.ppm
+	./portrait -s 1  -a lar      -g humana   -m comicus       -o exempla_out/lar.ppm
+	./portrait -s 2  -a manes    -g humana   -m atramentum    -o exempla_out/manes.ppm
+	./portrait -s 3  -a lemur    -g gigas    -m comicus       -o exempla_out/lemur_gigas.ppm
+	./portrait -s 4  -a ianus    -g nympha   -m orientalis    -o exempla_out/ianus_nympha.ppm
+	./portrait -s 5  -a augur    -g humana   -m pictum        -o exempla_out/augur.ppm
+	./portrait -s 6  -a quirinus -g pygmaeus -m comicus       -o exempla_out/quirinus.ppm
+	./portrait -s 7  -a carna    -g humana   -m niger         -o exempla_out/carna.ppm
+	./portrait -s 8  -a genius   -g penates  -m comicus       -o exempla_out/genius.ppm
+	./portrait -s 9  -a flamen   -g humana   -m ludicrum_viii -o exempla_out/flamen.ppm
+	./portrait -s 10 -a faunus   -g furia    -m comicus       -o exempla_out/faunus_furia.ppm
+	./portrait -s 11 -a lemur    -g larva    -m atramentum    -o exempla_out/lemur_larva.ppm
+	./portrait -s 12 -a ianus    -g satyrus  -m orientalis    -o exempla_out/ianus_satyrus.ppm
 	@echo "Exempla scripta in exempla_out/"
 
-linte:
-	insinulint -c *.c *.h
+colloca: omnia
+	install -d $(PREFIX)/bin $(PREFIX)/lib $(PREFIX)/include/homuncio
+	install -m 755 portrait matricula $(PREFIX)/bin/
+	install -m 644 $(BIBLIOTHECA) $(PREFIX)/lib/
+	install -m 644 $(CAPITA) $(PREFIX)/include/homuncio/
 
-.PHONY: omnia purga exempla linte
+purga:
+	rm -f $(OBJECTA) $(BIBLIOTHECA) portrait matricula
+	rm -f portrait.o matricula.o
+	rm -rf exempla_out
+
+linte:
+	insinulint -c $(FONTES) $(CAPITA)
+
+.PHONY: omnia colloca purga exempla linte
