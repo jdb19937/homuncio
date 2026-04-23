@@ -1,0 +1,1 @@
+re-render this portrait as the exact same person as a 16-bit pixel art portrait: a low-resolution grid of chunky square pixels, a limited retro color palette, visible dithering for shading, and simplified but recognizable features preserving the original hair, clothing, expression, and pose. keep the background and framing consistent. no text.

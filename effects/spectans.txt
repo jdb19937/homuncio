@@ -1,0 +1,1 @@
+generate a new portrait of the exact same person in this image, preserving their identity, face, features, skin tone, hair, clothing, expression, and head pose, but shift the eyes to glance off to one side while the head stays in the same position. all other details remain identical. keep the background and framing consistent. no text.

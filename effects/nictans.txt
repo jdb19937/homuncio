@@ -1,0 +1,1 @@
+generate a new portrait of the exact same person in this image, preserving their identity, face, features, skin tone, hair, clothing, and overall pose, but with the eyes half-closed mid-blink. all other details including expression and head angle remain identical. keep the background and framing consistent. no text.
